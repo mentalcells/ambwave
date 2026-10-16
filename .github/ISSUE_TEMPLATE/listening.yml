@@ -1,0 +1,24 @@
+name: Sound / playing feedback
+description: Report what you heard or how the instrument plays
+body:
+  - type: input
+    id: build
+    attributes:
+      label: AmbWave version and platform
+      placeholder: "0.1.0 / FM-1 or browser and URL"
+    validations:
+      required: true
+  - type: input
+    id: settings
+    attributes:
+      label: Sound, mode, notes and macro settings
+      placeholder: "TIDE HOLD, Dm7, Shape 50 Motion 25 Density 50 Space 0"
+    validations:
+      required: true
+  - type: textarea
+    id: listening
+    attributes:
+      label: What did you hear?
+      description: Describe the sustained part as well as the attack. State whether other effects or tracks were playing. Short recordings are helpful; do not attach private backups.
+    validations:
+      required: true

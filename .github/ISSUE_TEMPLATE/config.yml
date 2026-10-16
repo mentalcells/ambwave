@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: AmbWave quick start
+    url: https://github.com/mentalcells/ambwave/blob/ambient-prototype/docs/QUICK_START.md
+    about: Playing, browser controls, macros, mixing and current limits.
+  - name: Upstream Felucca source
+    url: https://github.com/hugelton/Felucca
+    about: AmbWave is a separate ambient fork; report AmbWave-specific issues here.

@@ -1,0 +1,15 @@
+build/
+.DS_Store
+__pycache__/
+*.fwsc
+.venv/
+.toolchains/
+
+# Local secrets and personal device exports; never part of a release.
+.env
+.env.*
+!.env.example
+/backups/
+*.pem
+*.p12
+*.pfx

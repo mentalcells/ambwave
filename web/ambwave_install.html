@@ -1,0 +1,135 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-only -->
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Install AmbWave</title>
+<style>
+body { margin: 3rem auto; padding: 0 1.25rem; max-width: 42rem; background: #101b21; color: #eee9df; font: 17px/1.6 system-ui; }
+a { color: #a7e5d1; } button, input { font: inherit; } button { padding: .7rem 1rem; cursor: pointer; }
+button:disabled { opacity: .5; cursor: default; } progress { width: 100%; } pre, code { overflow-wrap: anywhere; white-space: pre-wrap; font-size: .8em; }
+#package-info { overflow-wrap: anywhere; }
+label { display: block; margin: 1rem 0; } details { margin: 1.5rem 0; } #status { min-height: 3em; }
+</style>
+<nav><a href="../">AmbWave</a> · <a href="../install.html">Backup and recovery guide</a> · <a href="../credits.html">Licences and credits</a></nav>
+<h1>Install AmbWave</h1>
+<p id="release"></p>
+<p>This installs the AmbWave ambient instrument on an <strong>M-VAVE FM-1</strong>, using Felucca's existing updater.
+Use Chrome or Edge on a computer, over HTTPS or localhost. No Python is needed.</p>
+<ol>
+<li>Back up projects, presets, samples and settings with your current firmware's backup tools. Keep the backup private and verify that the download finished.</li>
+<li>Keep your previously working firmware package for rollback. Close other MIDI editors and installers.</li>
+<li>Connect the FM-1 directly by USB with stable power. Keep it connected until restart and verification finish.</li>
+</ol>
+<p><a href="../editor/">Open Felucca's backup editor</a> (for compatible running firmware). Close its tab before installing.
+Complete AmbWave scene recall is not implemented; live held notes and macro state are not a saved scene.</p>
+<p id="package-info"></p>
+<label><input id="saved" type="checkbox"> I have saved and checked my private backup and kept my previous firmware.</label>
+<button id="go" type="button" disabled>Install AmbWave</button>
+<progress id="progress" max="100" value="0" aria-label="Firmware installation progress"></progress>
+<p id="status" role="status" aria-live="polite">Checking the release package…</p>
+<details><summary>Installation log</summary><pre id="log"></pre></details>
+<details><summary>Roll back using a package you already trust</summary>
+<p>Choose your previously working Felucca-compatible <code>.fwsc</code> package. Verify its checksum against your own saved release before installing.
+This file stays in your browser. Returning to official M-VAVE firmware uses a separate procedure in the recovery guide.</p>
+<label>Previous firmware package <input id="previous" type="file" accept=".fwsc"></label>
+<button id="use-release" type="button">Use this AmbWave release again</button>
+</details>
+<h2>If an update stops</h2>
+<p>Keep this page open until it reports completion or an error. If interrupted, reconnect and install the same verified package again;
+the updater can resume from its loader. If the running firmware does not return, power-cycle the FM-1 and check it again.
+If no installer finds it, follow the <a href="../install.html">recovery guide</a>. Recovery is a separate procedure.</p>
+<p>After completion, check the <strong>AMBWAVE</strong> splash and ABOUT version on the device, then try TIDE and release your notes.
+The compatible FM-1_900 identifier alone does not identify AmbWave.</p>
+<p>Based on Felucca by Leo Kuroshita / Hügelton Instruments. GPL-3.0-only; component notices and matching source are included with the
+<a href="../downloads/manifest.json">release manifest</a> and <a href="../downloads/SHA256SUMS">checksums</a>.</p>
+<script type="module">
+import { productOf, logicalImage } from "./fm1pkg.js";
+import { Updater } from "./fm1ota.js";
+const meta = /*META*/;
+const $ = (id) => document.getElementById(id);
+const say = (text) => { $("status").textContent = text; };
+const log = (text) => { $("log").textContent += text + "\n"; };
+let selected = null, writing = false, epoch = 0;
+const supported = isSecureContext && !!navigator.requestMIDIAccess && !!crypto.subtle;
+function refresh() {
+  $("go").disabled = writing || !supported || !selected || !$("saved").checked;
+  $("go").textContent = selected?.previous ? "Install selected previous package" : "Install AmbWave";
+  for (const id of ["saved", "previous", "use-release"]) $(id).disabled = writing;
+}
+async function verify(bytes, previous = false, name = "") {
+  const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map((v) => v.toString(16).padStart(2, "0")).join("");
+  if (!previous && hash !== meta.sha256) throw new Error("Release checksum mismatch. Nothing was written. Reload this page or download a fresh release.");
+  if (bytes.length < 960) throw new Error("Package is too short.");
+  const product = productOf(bytes);
+  if (!/^FM-1_9\d\d$/.test(product) || (!previous && product !== meta.product) ||
+      !new TextDecoder("latin1").decode(bytes).includes("FELUCCA-LOADER-1"))
+    throw new Error("This is not a supported Felucca-loader FM-1 package.");
+  const image = logicalImage(bytes);
+  return { image, product, hash, previous, name: previous ? name : `AmbWave ${meta.version}` };
+}
+function showPackage(pkg) {
+  selected = pkg;
+  $("package-info").textContent = `${pkg.name} · ${pkg.product} · SHA-256 ${pkg.hash}`;
+  say(pkg.previous ? "Previous package loaded locally. Check its checksum before continuing." : "AmbWave release checksum verified. Ready after backup confirmation.");
+  refresh();
+}
+async function loadRelease() {
+  const current = ++epoch; selected = null; refresh();
+  if (!supported) { say("Open this installer in Chrome or Edge over HTTPS (or localhost) with Web MIDI available. The browser demo works separately."); return; }
+  try {
+    say("Checking the release package…");
+    const response = await fetch(meta.pkg);
+    if (!response.ok) throw new Error(`Package download failed (HTTP ${response.status}).`);
+    const pkg = await verify(new Uint8Array(await response.arrayBuffer()));
+    if (current === epoch) showPackage(pkg);
+  } catch (error) { if (current === epoch) { selected = null; say(error.message); refresh(); } }
+}
+$("release").textContent = `Version ${meta.version}${meta.candidate ? " · local release candidate" : ""}`;
+$("saved").addEventListener("change", refresh);
+$("use-release").addEventListener("click", () => { $("previous").value = ""; loadRelease(); });
+$("previous").addEventListener("change", async () => {
+  const current = ++epoch, file = $("previous").files[0]; selected = null; refresh();
+  if (!file) { loadRelease(); return; }
+  if (!supported) return;
+  try {
+    const pkg = await verify(new Uint8Array(await file.arrayBuffer()), true, file.name);
+    if (current === epoch) showPackage(pkg);
+  } catch (error) { if (current === epoch) say(error.message); }
+});
+window.addEventListener("beforeunload", (event) => { if (writing) { event.preventDefault(); event.returnValue = "Installation in progress"; } });
+$("go").addEventListener("click", async () => {
+  if (writing || !selected || !$("saved").checked || !supported) return;
+  const pkg = selected;
+  if (!confirm(`Install ${pkg.name} on the connected FM-1? Your private backup and previous firmware should already be saved. Keep USB connected until restart verification finishes.`)) return;
+  writing = true; refresh(); $("log").textContent = ""; $("progress").value = 0;
+  let midi;
+  try {
+    midi = await navigator.requestMIDIAccess({ sysex: true });
+    const updater = new Updater(midi, log);
+    const labels = { start: "Connected", verify: "Staging update loader", loader: "Entering update mode", write: "Writing firmware", reboot: "Restarting and verifying device", done: "Device returned with the expected compatible identifier" };
+    const step = (kind, value) => {
+      log(`${kind} ${value ?? ""}`); say(labels[kind] || kind);
+      if (kind === "verify") $("progress").value = Math.min(10, value / 74 * 10);
+      if (kind === "write") $("progress").value = Math.min(95, 10 + value / 1167 * 85);
+      if (kind === "reboot") $("progress").value = 97;
+      if (kind === "done") $("progress").value = 100;
+    };
+    const loader = await updater.find((id) => /^ota-/i.test(id.model));
+    if (loader) {
+      loader.link.close();
+      if (!await updater.resume(pkg.image, step, pkg.product)) throw new Error("The update stopped. Reconnect and retry the same verified package.");
+    } else await updater.install(pkg.image, pkg.product, step);
+    say(pkg.previous ? "Previous firmware restarted. Check its splash/version and saved data on the device." :
+      `Update complete. Check AMBWAVE ${meta.version} in the splash/ABOUT screen, then try TIDE. The compatible identifier alone does not distinguish AmbWave.`);
+  } catch (error) {
+    const messages = { notfound: "FM-1 not found. Check your USB data cable and close other MIDI apps.", noloader: "Update loader not found. Reconnect and retry the same package.", noreturn: "The device did not return after restart. Power-cycle it and check again.", mismatch: "The device returned a different identifier. Check the device before retrying.", lost: "USB disconnected. Reconnect and retry the same verified package.", stopped: "Update stopped. Reconnect and retry the same package.", model: "The connected device is not an FM-1.", NotAllowedError: "MIDI SysEx permission was denied. Allow MIDI in this site's settings and retry." };
+    say(messages[error.code] || messages[error.name] || `Installation failed: ${error.message}`); log(String(error));
+  } finally {
+    if (midi) for (const port of [...midi.inputs.values(), ...midi.outputs.values()]) { port.onmidimessage = null; await port.close().catch(() => {}); }
+    writing = false; refresh();
+  }
+});
+loadRelease();
+</script>
+</html>
