@@ -47,3 +47,16 @@ this repository migration.
 - Test real hardware installation, backup, rollback and recovery only with
   explicit current-conversation approval; never overwrite user device data.
 - Approve repository visibility, public hosting and the release separately.
+
+## Public release approval — 2026-10-17
+
+The user approved public repository visibility, GitHub release v0.1.0 and the
+prepared website deployment. The original archive remains private. The user
+reported successful installation using the browser installer, AMBWAVE startup,
+ABOUT/version and basic sound checks, SPACE dry/wet response, layer controls and
+a normal power-cycle restart. The user also reviewed the local homepage and
+emulator. These are user-reported smoke checks, not automated device tests.
+Rollback and interrupted-update recovery remain untested on hardware.
+
+Release links: https://mentalcells.github.io/ambwave/ and
+https://github.com/mentalcells/ambwave/releases/tag/v0.1.0 .

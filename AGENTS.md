@@ -39,7 +39,8 @@ Read `AMBIENT_PLAN.md` before proposing product or architecture changes.
 ## Public identity
 
 - The maintainer is `mentalcells`; this clean source repository is
-  `mentalcells/ambwave`, private until publication is explicitly approved.
+  `mentalcells/ambwave`. Public visibility, the website and v0.1.0 release were
+  explicitly approved on 2026-10-17; the original archive must stay private.
 - The original development repository and local history remain private archives.
   Never mirror-push their branches, Codex checkpoints or backup refs here.
 - Use repository-local Git identity only, with the verified GitHub noreply email

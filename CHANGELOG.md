@@ -1,9 +1,9 @@
 # Changelog
 
-## 0.1.0 — MVP candidate
+## 0.1.0 — 2026-10-17
 
 First AmbWave MVP, previously developed as Hasake, based on Felucca 1.0.5.2.
-The release has not been published yet.
+First public AmbWave release.
 
 - Four independent tracks with TIDE, TEXTURE, CLOUD and curated pluck sounds;
   TIDE WARM and TIDE SILK remain selectable variations.
@@ -18,8 +18,8 @@ The release has not been published yet.
 - Visible browser level sliders and mutes, with first-use playing guidance.
 - Prepared direct browser installation with exact-package checksum checking,
   backup acknowledgement, progress, restart checks and previous-package rollback.
-- Public maintainer identity: mentalcells; account migration and history review
-  remain pending before publication.
+- Public maintainer identity: mentalcells; clean source history with upstream
+  and third-party attribution retained.
 - AmbWave branding and separate browser save namespace. Earlier Felucca/Hasake
   browser saves are left untouched and are not automatically imported.
 
@@ -27,3 +27,9 @@ Limits: eight shared voices, shared effects buses, mono effect return, possible
 voice stealing under dense layering, and no complete curated-scene save/recall.
 The browser does not emulate device USB, TRS MIDI or user sample slots. Device
 USB/package/storage identifiers and recovery tools remain Felucca-compatible.
+
+Hardware validation reported by the maintainer: browser installation, AMBWAVE
+startup, basic playback and note release, SPACE, layer controls, and normal
+power-cycle restart passed. Rollback and interrupted-update recovery remain
+untested on real hardware. Software installer simulations cover those paths
+but are not a substitute for device testing.

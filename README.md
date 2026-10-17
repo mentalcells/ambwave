@@ -4,9 +4,11 @@ An ambient instrument for the **M-VAVE FM-1**, maintained by **mentalcells**, bu
 [Felucca](https://github.com/hugelton/Felucca) by Leo Kuroshita / Hügelton Instruments.
 Hold a chord, add atmosphere and scattered notes, then shape the scene with four knobs.
 
-**MVP 0.1.0, release preparation.** The browser and hardware run the same
-synthesis code. Source, firmware downloads and a browser demo are being packaged;
-no public demo or downloadable release is live yet. AmbWave was previously
+**AmbWave 0.1.0** · [Play in your browser](https://mentalcells.github.io/ambwave/try/)
+· [Install on an FM-1](https://mentalcells.github.io/ambwave/install/)
+· [Downloads and source](https://github.com/mentalcells/ambwave/releases/tag/v0.1.0)
+
+The browser and hardware run the same synthesis code. AmbWave was previously
 called Hasake; historical design notes retain that name.
 
 ## Play
@@ -58,12 +60,14 @@ package but does not install it on hardware.
 
 ## Hardware and releases
 
-Do not use upstream Felucca's install link expecting it to install AmbWave.
-No public AmbWave installer or release is claimed here yet. Installation and
-recovery use the existing Felucca tools. The prepared release site includes a
-direct AmbWave browser installer with package checksum verification; read
-[installation and recovery](docs/INSTALLING.md) and preserve device backups
-before installing experimental firmware.
+Use the [AmbWave website](https://mentalcells.github.io/ambwave/) to try the emulator,
+install the firmware in Chrome/Edge, or download firmware and matching source.
+Read [installation and recovery](docs/INSTALLING.md) and back up device data first.
+
+The maintainer reports successful browser installation, basic playback, macro and
+layer controls, SPACE, and a normal power-cycle restart on an FM-1. Rollback and
+interrupted-update recovery have not been tested on hardware for this release.
+The upstream Felucca installer installs Felucca, not this AmbWave release.
 
 See [the launch checklist](docs/PUBLIC_RELEASE_CHECKLIST.md),
 [installation and recovery](docs/INSTALLING.md), [release notes](CHANGELOG.md),

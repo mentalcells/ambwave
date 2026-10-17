@@ -18,7 +18,8 @@ installs Felucca; it is not an AmbWave download.
 
 ## Install in your browser
 
-The prepared release site includes an **Install AmbWave** page at `install/`.
+The [AmbWave website](https://mentalcells.github.io/ambwave/) includes an
+[Install AmbWave](https://mentalcells.github.io/ambwave/install/) page.
 Open it in Chrome or Edge over HTTPS (or localhost for the local preview).
 The page checks the exact release package's SHA-256 and compatible identity
 before enabling installation. Confirm that you have saved your backup, click
@@ -28,8 +29,9 @@ No Python is needed. Loading the page alone never requests MIDI or writes firmwa
 Keep USB connected through loader staging, writing, restart and the final
 identity check. After completion, verify the AMBWAVE splash and ABOUT version
 on the device: FM-1_900 is a compatibility identifier shared with other builds.
-This browser path is prepared locally; public hosting and a real-device smoke
-check remain release gates.
+The maintainer reports that installation, startup, basic playback, controls and
+normal power-cycle restart passed on an FM-1. Rollback and interrupted-update
+recovery remain untested on hardware for this release.
 
 The page also accepts a trusted previous Felucca-compatible package for
 rollback. Compare the displayed checksum with your saved release first.
