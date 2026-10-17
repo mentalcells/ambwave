@@ -1,0 +1,62 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Credits · AmbWave</title>
+<style>body{margin:3rem auto;padding:0 1.5rem;max-width:56rem;background:#101b21;color:#eee9df;font:18px/1.65 system-ui}a{color:#a7e5d1}h1{font-size:3rem;line-height:1.1}nav{display:flex;gap:1.5rem;flex-wrap:wrap}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#1d3039;padding:1rem}table{border-collapse:collapse;font-size:.85em}td{padding:.4rem;border-bottom:1px solid #48616d}small{color:#c2c8c6}.button{display:inline-block;border:1px solid;padding:.6rem 1rem;border-radius:.5rem}code{font-size:.9em}</style>
+<nav><a href="./">AmbWave</a><a href="try/">Play</a><a href="guide.html">Quick start</a><a href="install.html">Install / recover</a><a href="credits.html">Credits</a></nav>
+<main><h1>AmbWave / Felucca licensing</h1>
+<p>AmbWave&#x27;s public maintainer identity is <strong>mentalcells</strong>. The repository link below is the current source location.</p>
+<p>AmbWave is a modified version of Felucca, maintained separately at <a href="https://github.com/mentalcells/ambwave">https://github.com/mentalcells/ambwave</a>. AmbWave&#x27;s ambient interface, curated sounds, macro mappings and tests are distributed under GPL-3.0-only, alongside the Felucca code from which they derive. The original copyright notices and the component licences below are retained. AmbWave changes are documented in the dated implementation notes under <code>docs/</code>; the public Git history starts from a clean source snapshot, and the public MVP is being prepared on 2026-10-16.</p>
+<p>The original Felucca project is <a href="https://github.com/hugelton/Felucca">https://github.com/hugelton/Felucca</a>. AmbWave bug reports belong in the AmbWave repository, not the upstream project.</p>
+<p>Felucca is free software, licensed under the GNU General Public License, version 3 only (<code>GPL-3.0-only</code>, full text in <code>LICENSE</code>). That covers the code and its own assets. A few bundled or ported parts keep their own licences; they are listed below, and their licence texts are in <code>LICENSES/</code>.</p>
+<p>Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments</p>
+<h2>What is GPL-3.0-only</h2>
+<p>Every file in this tree that carries an <code>SPDX-License-Identifier: GPL-3.0-only</code> header:</p>
+<p>- the firmware: <code>firmware/</code> (app, HAL, update loader)</p>
+<p>- the build script and tools: <code>build.sh</code>, <code>tools/</code></p>
+<p>- the web pages (installer, editor, the browser emulator <code>web/emu/</code>) and their tests: <code>web/</code> (not the Fukiai and DotGothic16 fonts, below)</p>
+<p>- the host tests: <code>tests/</code></p>
+<p>Three source files are ports and keep the licence of their originals: <code>firmware/src/phys_dsp.c</code> (DaisySP, MIT), <code>firmware/src/phys_symp.c</code> (Rings, MIT) and <code>firmware/src/fm6_core.c</code> (msfa, Apache-2.0). The firmware built with them is GPL-3.0-only as a whole.</p>
+<p>You may use, study, change and share Felucca under the GPL. If you distribute Felucca, or firmware derived from it, you must also give your recipients its complete corresponding source under the same licence. That includes devices that ship with modified Felucca inside.</p>
+<h2>Hügelton Instruments&#x27; own work</h2>
+<p>All by Hügelton Instruments (Leo Kuroshita), in this tree:</p>
+<table>
+<tr><td>What</td><td>Licence</td><td>Where</td></tr>
+<tr><td>Felucca: firmware, tools, web pages, tests</td><td>GPL-3.0-only</td><td><code>LICENSE</code></td></tr>
+<tr><td>The PHASE engine&#x27;s waveforms: a C port of the oscillator of CrispyZebra (<a href="https://github.com/hugelton/CrispyZebra">https://github.com/hugelton/CrispyZebra</a>)</td><td>GPL-3.0</td><td><code>firmware/src/eng_phase.c</code></td></tr>
+<tr><td>The DRUM voices and kit</td><td>GPL-3.0-only</td><td><code>firmware/src/drum_voice.c</code>, <code>firmware/src/eng_drum.c</code></td></tr>
+<tr><td>The Hügelton Sample Pack: Felucca&#x27;s drum sounds, made by <code>tools/gen_waves.py</code>, from which the SLICE engine&#x27;s BREAK is built (not CC0)</td><td>GPL-3.0-only</td><td><code>tools/gen_waves.py</code></td></tr>
+<tr><td>The controls picture</td><td>GPL-3.0-only</td><td><code>docs/controls.jpg</code></td></tr>
+<tr><td>The Fukiai icon font (<a href="https://github.com/hugelton/Fukiai">https://github.com/hugelton/Fukiai</a>): the firmware&#x27;s icons (rasterised at build time by <code>tools/gen_aa_icons.py</code>) and the web editor&#x27;s</td><td>MIT</td><td><code>web/fukiai.ttf</code>, <code>LICENSES/MIT-Fukiai.txt</code>, <code>web/FUKIAI-LICENSE.txt</code></td></tr>
+</table>
+<h2>Third-party material</h2>
+<table>
+<tr><td>What</td><td>Licence</td><td>Where</td></tr>
+<tr><td>Inter Tight font by The Inter Project Authors: the UI text, rasterised into the firmware at build time (<code>tools/gen_aa_font.py</code>; the generated tables are not offered as a font, and the font declares no Reserved Font Name)</td><td>SIL OFL 1.1</td><td><code>assets/fonts/InterTight[wght].ttf</code>, <code>LICENSES/OFL-InterTight.txt</code> (also <code>assets/fonts/OFL.txt</code>)</td></tr>
+<tr><td>Instrument samples (Versilian Studios VSCO-2 Community Edition, VCSL): the SAMPLE sets, also the SLICE engine&#x27;s PIANO (the PIANO set&#x27;s middle C)</td><td>CC0 1.0</td><td><code>assets/samples-cc0/</code>, provenance in <code>ATTRIBUTION.txt</code> there</td></tr>
+<tr><td>DaisySP by Electrosmith, Corp and Emilie Gillet (<a href="https://github.com/electro-smith/DaisySP">https://github.com/electro-smith/DaisySP</a>): the PHYS engine&#x27;s modal and string models and the resonator, ported to fixed point</td><td>MIT</td><td><code>firmware/src/phys_dsp.c</code>, <code>LICENSES/MIT-DaisySP.txt</code></td></tr>
+<tr><td>Rings by Emilie Gillet (<a href="https://github.com/pichenettes/eurorack">https://github.com/pichenettes/eurorack</a>): the PHYS engine&#x27;s sympathetic strings, ported to fixed point</td><td>MIT</td><td><code>firmware/src/phys_symp.c</code>, <code>LICENSES/MIT-Rings.txt</code></td></tr>
+<tr><td>msfa by Google Inc. and Pascal Gauthier, from Dexed (<a href="https://github.com/asb2m10/dexed">https://github.com/asb2m10/dexed</a>): the FM6 engine&#x27;s synthesis, ported to integer C (Dexed itself is GPL-3.0; only msfa is used; the FM6 factory patches are Felucca&#x27;s own)</td><td>Apache-2.0</td><td><code>firmware/src/fm6_core.c</code>, <code>LICENSES/Apache-2.0-msfa.txt</code></td></tr>
+<tr><td>klattsch by Tony Gies (<a href="https://github.com/tgies/klattsch">https://github.com/tgies/klattsch</a>): design reference for the VOICE engine; no code copied. Formant data from Klatt (1980) / Hillenbrand et al. (1995)</td><td>MIT (klattsch)</td><td>credit only</td></tr>
+<tr><td>X0X by charlesvestal (<a href="https://github.com/charlesvestal/fm1-x0x">https://github.com/charlesvestal/fm1-x0x</a>), a Felucca fork: the design of the browser emulator (the worklet, the device clock driven by its audio, the exports); its files credit it in their headers</td><td>GPL-3.0</td><td><code>web/emu/</code></td></tr>
+<tr><td>DotGothic16 font by The DotGothic16 Project Authors (<a href="https://github.com/fontworks-fonts/DotGothic16">https://github.com/fontworks-fonts/DotGothic16</a>): the browser emulator&#x27;s knob labels, served with its page (cut to printable ASCII; the font declares no Reserved Font Name)</td><td>SIL OFL 1.1</td><td><code>web/emu/fonts/DotGothic16-subset.woff</code>, <code>LICENSES/OFL-DotGothic16.txt</code> (also <code>web/emu/fonts/OFL.txt</code>)</td></tr>
+<tr><td>JieLi AC79 SDK by JieLi Technology: three of its files go into every <code>.fwsc</code> package (below); none are in this tree</td><td>Apache-2.0</td><td><code>LICENSES/Apache-2.0.txt</code></td></tr>
+</table>
+<p>On the device, HOME held &gt; ABOUT opens the information screen; turning PRESETS scrolls on into CREDITS, a short list of these authors, licences and source URLs.</p>
+<h2>JieLi SDK files in the packages (Apache-2.0)</h2>
+<p>A <code>.fwsc</code> package made by <code>tools/build.py</code> (with <code>tools/fm1pkg_make.py</code>; this is the package the web installer installs) holds three unmodified files from the JieLi AC79 SDK (<a href="https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK">https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK</a>, <code>cpu/wl82/tools/</code>). They are read from your SDK checkout at build time (see BUILDING.md); no SDK files are in this tree.</p>
+<table>
+<tr><td>File in the package</td><td>What it is</td></tr>
+<tr><td><code>uboot.boot</code></td><td>the first-stage boot loader (SPL)</td></tr>
+<tr><td><code>cfg_tool.bin</code></td><td>the chip configuration block</td></tr>
+<tr><td><code>eq_cfg_hw.bin</code></td><td>the default hardware EQ table</td></tr>
+</table>
+<p>They are licensed under the Apache License, Version 2.0 (<code>LICENSES/Apache-2.0.txt</code>), not under the GPL, and their copyright stays with JieLi Technology. The SDK has no NOTICE file. Apache-2.0 files may be distributed together with GPL-3.0 code; Felucca itself stays GPL-3.0-only.</p>
+<p>Every distribution of a package carries the licence texts with it: the release folder (<code>tools/build.py --release</code>) and the site (<code>web/make_site.py</code>, next to the package in <code>firmware/</code> and linked from the installer page).</p>
+<h2>No vendor material</h2>
+<p>No M-VAVE material is part of Felucca. The firmware links no vendor code and contains no vendor data, and the packages hold only Felucca and the three SDK files above. The installer&#x27;s &quot;Return to official V15&quot; holds only the official file&#x27;s size and SHA-256: you select the official firmware file you downloaded yourself, and it is checked and installed in your browser, never uploaded or redistributed.</p>
+<h2>Contributions</h2>
+<p>Contributions are welcome under GPL-3.0-only.</p>
+<h2>Trademarks</h2>
+<p>&quot;Felucca&quot; and &quot;Hügelton Instruments&quot; are names of Hügelton Instruments.</p>
+<p>&quot;M-VAVE&quot; and &quot;FM-1&quot; are trademarks of their respective owners. Felucca is independent firmware that runs on FM-1 hardware. It is not affiliated with, endorsed by or supported by those owners.</p>
+<h2>Radio</h2>
+<p>Felucca never enables the Bluetooth / Wi-Fi radio of the hardware.</p></main><footer><small>Independent ambient firmware for M-VAVE FM-1, based on Felucca by Leo Kuroshita / Hügelton Instruments. GPL-3.0-only; third-party notices included. No affiliation with M-VAVE.</small></footer></html>

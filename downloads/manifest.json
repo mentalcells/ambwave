@@ -1,0 +1,31 @@
+{
+  "product": "AmbWave",
+  "maintainer": "mentalcells",
+  "version": "0.1.0",
+  "candidate": false,
+  "dirty_snapshot": false,
+  "git_base": "828ceaa3fd0b62e825820998e1a09ab90d6edcd1",
+  "source_archive": "ambwave-0.1.0-source.tar.gz",
+  "source_archive_sha256": "a196ffe2e4ac2ee6f29b9611847513c228f8d899ff06c67d168faa1df69bb3f0",
+  "package_identity": "FM-1_900",
+  "builds": {
+    "firmware": {
+      "product": "AmbWave",
+      "version": "0.1.0",
+      "ambient_poc": 1,
+      "source_inputs_sha256": "fa2e7a59eaf27df7802c3e700d6d4801d72f80e25ac7051f5739337e7456b5ac",
+      "artifact_sha256": "4605411cfa91ba5143c79523837db7b09a19abf2bf4bf3f2a40e95c1b81a2933",
+      "created_utc": "2026-10-16T11:48:45Z"
+    },
+    "browser": {
+      "product": "AmbWave",
+      "version": "0.1.0",
+      "ambient_poc": 1,
+      "source_inputs_sha256": "fa2e7a59eaf27df7802c3e700d6d4801d72f80e25ac7051f5739337e7456b5ac",
+      "artifact_sha256": "85849252c27fce1e6d15d6d823d4e9891b7445b01995a3827edfb1e963c1b2d7",
+      "created_utc": "2026-10-16T11:48:42Z"
+    }
+  },
+  "source_url": "https://github.com/mentalcells/ambwave",
+  "publication": "Prepared locally; no repository visibility or hosting changes made."
+}
