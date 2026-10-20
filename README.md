@@ -2,7 +2,8 @@
 
 An ambient instrument for the **M-VAVE FM-1**, maintained by **mentalcells**, built on
 [Felucca](https://github.com/hugelton/Felucca) by Leo Kuroshita / Hügelton Instruments.
-Hold a chord, add atmosphere and scattered notes, then shape the scene with four knobs.
+Latch a chord, add a slowly evolving drone, resonant bowls or scattered notes,
+then shape the scene with four knobs.
 
 **AmbWave 0.1.0** · [Play in your browser](https://mentalcells.github.io/ambwave/try/)
 · [Install on an FM-1](https://mentalcells.github.io/ambwave/install/)
@@ -11,31 +12,58 @@ Hold a chord, add atmosphere and scattered notes, then shape the scene with four
 The browser and hardware run the same synthesis code. AmbWave was previously
 called Hasake; historical design notes retain that name.
 
+**Current development source** adds an autonomous DRONE role, independent
+role/sound selection, factory sound auditions and two resonant Sound Bath
+patches. The links above still serve **v0.1.0**; these additions are not yet a
+new packaged release or an updated hosted demo.
+
 ## Play
 
 - **ALGORITHM** selects one of four tracks.
-- **PRESETS** selects its sound: TIDE, TEXTURE, CLOUD, WARM PLUCK, SOFT MALLET,
-  BELL PLUCK, TIDE WARM or TIDE SILK. Changing sound clears that track's held notes.
-- In **HOLD**, tap notes to sustain them; tap them again to release.
+- **HOME + PRESETS** selects its role: TIDE, TEXTURE, CLOUD, PULSE or DRONE.
+- **PRESETS** selects a compatible sound within that role: ten TIDE choices
+  and six PULSE choices, including the original sounds and unretuned Felucca
+  factory auditions and resonant BOWED METAL / BOWL STUDY patches. TEXTURE has
+  NOISE, CLOUD has GRAIN and DRONE has AN SOFT PAD. Changing role or sound
+  clears held notes and resets macros, retaining mode, pattern and mix.
+- Factory auditions show **FACT** on unmapped tone macros. SPACE 50 retains
+  factory sends; SPACE 0 is dry. PULSE DENSITY still controls note probability.
+  See the [audition notes](docs/FACTORY_AUDITION_RESULTS.md) for the factory sounds.
+- **DRONE** sustains without PLAY and evolves slowly. Press overlapping keys to
+  build a chord; after releasing all keys, the next gesture replaces it. STOP
+  leaves Drone running; use track mute or FX + OCT− to silence or clear it.
+- **BOWL STUDY** starts as a struck resonance. Raise DENSITY to feed sustained
+  excitation into it. BOWED METAL starts with strong excitation. For these two
+  sounds, SHAPE controls brightness, MOTION adds gentle drift and SPACE adds
+  reverb. See [Sound Bath details](docs/SOUND_BATH_INTEGRATION.md).
+- In **HOLD**, tap notes to sustain them; tap them again to release. DRONE uses
+  the chord-replacement gesture described above.
 - The four knobs are **SHAPE**, **MOTION**, **DENSITY**, **SPACE**.
 - Hold **HOME** and turn the four knobs to mix the tracks. HOME plus the first
   four black keys toggles their mutes. The browser also has visible level sliders
   and mute controls beneath the instrument.
 - **FX + OCT−** clears the selected track's held notes.
 - **HOME + ARP** cycles HOLD / SCATTER / SEQUENCE. SCATTER uses a held pitch set
-  while PLAY runs. SEQ opens the existing step editor for a deliberate phrase.
+  while PLAY runs. Press **SEQ** to enter SEQUENCE and open the existing step
+  editor for a deliberate phrase. DRONE remains in HOLD.
 
 Start with track 1 on TIDE and tap three notes. Turn SPACE to 0 to hear it dry. Add a quiet TEXTURE
-on track 2. On track 3, hold a few notes and press PLAY for sparse plucks.
+on track 2. On track 3, tap a few notes and press PLAY for sparse plucks.
+For a sustained foundation, select DRONE on a track and play a chord without PLAY.
 See [the quick start](docs/QUICK_START.md) for browser controls and mode details.
 
 ## What is here
 
 Four independent tracks, curated sounds, a direct mixer and musical macro
 mappings. TIDE uses a curated FM6 patch with sustained harmonic movement,
-a stable fundamental and no chorus or detuning. TIDE WARM uses the existing analog engine; TIDE SILK uses Felucca's
+a stable fundamental and no chorus or detuning. WARM PAD uses the existing analog engine; SILK PAD uses Felucca's
 FM6 engine. CLOUD uses the existing granular engine and a bundled flute sample.
-No personal samples are required.
+No personal samples are required. DRONE uses Felucca's existing analog soft pad;
+BOWED METAL and BOWL STUDY use its existing PHYS resonator. These additions reuse
+existing engines rather than add new DSP. See [Drone details](docs/DRONE_ROLE_RESULTS.md).
+
+An ORDERED arp configuration is [proposed](docs/PULSE_MOTIF_GAP_ASSESSMENT.md)
+but is not implemented. Existing HOLD / SCATTER / SEQUENCE behavior remains.
 
 Eight voices and the effects buses are shared. SPACE changes each track's sends
 and dry balance. Complete AmbWave scene save/recall is not implemented; underlying
@@ -64,7 +92,12 @@ Use the [AmbWave website](https://mentalcells.github.io/ambwave/) to try the emu
 install the firmware in Chrome/Edge, or download firmware and matching source.
 Read [installation and recovery](docs/INSTALLING.md) and back up device data first.
 
-The maintainer reports successful browser installation, basic playback, macro and
+The combined development source passes firmware builds, host regressions, UI and
+storage checks; its 92 golden engine renders remain unchanged. Drone and Sound
+Bath development packages were installed successfully on an FM-1. Musical
+acceptance and measured hardware timing for these additions remain pending.
+
+For v0.1.0, the maintainer reports successful browser installation, basic playback, macro and
 layer controls, SPACE, and a normal power-cycle restart on an FM-1. Rollback and
 interrupted-update recovery have not been tested on hardware for this release.
 The upstream Felucca installer installs Felucca, not this AmbWave release.

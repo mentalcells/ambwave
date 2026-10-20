@@ -367,3 +367,12 @@ static volatile uint32_t fm1_ms;  /* milliseconds since boot (TIMER4-based, TIME
 /* boot-loop guard (main.c): two boots in a row that die in the first 30 s -> UBOOT */
 #define BOOTGUARD_MAGIC 0x42475244u
 struct { uint32_t magic, failed, pending; } bootguard __attribute__((section(".noinit")));
+
+#if AMBIENT_POC
+/* Drone hooks are inert for every other role. */
+static int ambient_drone_controls(const track_t *t, int32_t *controls);
+static void drone_tick(track_t *t, uint32_t n);
+static void ambient_bath_tick(track_t *t);
+static void drone_voice(track_t *t, voice_t *v, vmod_t *m);
+static uint32_t drone_detune(track_t *t, uint32_t inc);
+#endif

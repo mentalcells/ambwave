@@ -14,43 +14,110 @@ enum {
 static uint8_t ambient_latch_enabled;
 static int32_t ambient_two_stage(int32_t a, int32_t middle, int32_t top);
 static int32_t ambient_level[NTRK];
-static const char *const pulse_timbre_names[] = {"WARM PLUCK", "SOFT MALLET", "BELL PLUCK"};
-static const char *const tide_timbre_names[] = {"TIDE", "TIDE WARM", "TIDE SILK"};
+static uint8_t ambient_bath_clock[NTRK];
+/* Patch IDs are stable within a role; append entries, never reorder them. */
+typedef struct {
+    uint8_t role, id, engine, factory;
+    const char *name;
+} ambient_patch_def_t;
+/* factory == 254 is the separate Drone profile over ANALOG SOFT PAD.
+ * factory == 255 retains the existing curated initializer/macro profile.
+ * Other entries are unretuned factory auditions, not variants of that profile. */
+static const ambient_patch_def_t ambient_patches[] = {
+    {AS_TIDE, 0, ENGI_FM6, 255, "BODY PAD"},
+    {AS_TIDE, 1, 0, 255, "WARM PAD"},
+    {AS_TIDE, 2, ENGI_FM6, 255, "SILK PAD"},
+    {AS_TIDE, 3, ENGI_FM6, 4, "FM SOFT PAD"},
+    {AS_TIDE, 4, 0, 1, "AN SOFT PAD"},
+    {AS_TIDE, 5, 0, 11, "AN STRINGS"},
+    {AS_TIDE, 6, 0, 3, "AN PWM STR"},
+    {AS_TIDE, 7, 5, 0, "CHOIR AAH"},
+    {AS_TIDE, 8, ENGI_PHYS, 3, "BOWED METAL"},
+    {AS_TIDE, 9, ENGI_PHYS, 3, "BOWL STUDY"},
+    {AS_TEXTURE, 0, 11, 255, "NOISE"},
+    {AS_CLOUD, 0, 8, 255, "GRAIN"},
+    {AS_PULSE, 0, 2, 255, "WARM PLUCK"},
+    {AS_PULSE, 1, 2, 255, "SOFT MALLET"},
+    {AS_PULSE, 2, 2, 255, "BELL PLUCK"},
+    {AS_PULSE, 3, ENGI_FM6, 1, "GLASS BELL"},
+    {AS_PULSE, 4, ENGI_FM6, 5, "FM MARIMBA"},
+    {AS_PULSE, 5, ENGI_FM6, 0, "FM TINE EP"},
+    {AS_DRONE, 0, 0, 254, "AN SOFT PAD"},
+};
+static int ambient_bath_patch(const track_t *t)
+{
+    const ambient_layer_t *s = &ambient_layers[t - trk];
+    return s->role == AS_TIDE && (s->patch == 8 || s->patch == 9);
+}
+static int ambient_factory_patch(const track_t *t)
+{
+    const ambient_layer_t *s = &ambient_layers[t - trk];
+    return (s->role == AS_TIDE || s->role == AS_PULSE) && s->patch >= 3 && !ambient_bath_patch(t);
+}
+static int ambient_macro_locked(const track_t *t, uint32_t macro)
+{
+    return ambient_factory_patch(t) && (macro < 2 || (macro == 2 && ambient_layers[t - trk].role == AS_TIDE));
+}
+static const ambient_patch_def_t *ambient_patch_find(uint32_t role, uint32_t id)
+{
+    /* Constant-time lookup: this is also called from the audio path. */
+    static const uint8_t first[] = {0, 0, 10, 12, 11, 18};
+    static const uint8_t count[] = {0, 10, 1, 6, 1, 1};
+    if (role >= NELEM(count) || id >= count[role]) return 0;
+    const ambient_patch_def_t *patch = &ambient_patches[first[role] + id];
+    return patch->role == role && patch->id == id ? patch : 0;
+}
 static const uint8_t pulse_shape_min[] = {2, 4, 8};
 static const uint8_t pulse_shape_span[] = {90, 96, 96};
 static const uint8_t pulse_rates[] = {6, 0, 1, 2};
 static const char *const pulse_rate_names[] = {"1/2", "1/4", "1/8", "1/16"};
 static ambient_layer_t *ambient_layer(const track_t *t) { return &ambient_layers[t - trk]; }
 static int ambient_fm_pad(const track_t *t)
-{ return ambient_layer(t)->sound == AS_TIDE && ambient_layer(t)->timbre != 1; }
+{ return ambient_layer(t)->role == AS_TIDE && (ambient_layer(t)->patch == 0 || ambient_layer(t)->patch == 2); }
 static int ambient_grounded_pad(const track_t *t)
-{ return ambient_layer(t)->sound == AS_TIDE && ambient_layer(t)->timbre == 0; }
+{ return ambient_layer(t)->role == AS_TIDE && ambient_layer(t)->patch == 0; }
+#if TIDE_BREATH_EXPERIMENT
+static int32_t ambient_tide_breath_motion(const track_t *t)
+{
+    const ambient_layer_t *s = ambient_layer(t);
+    return ambient_latch_enabled && ambient_grounded_pad(t) && s->mode == AM_HOLD &&
+        t->engine == ENGI_FM6 && t->eng_req == ENGI_FM6 && !t->xf_on ? s->motion : 0;
+}
+#endif
 static int32_t ambient_tide_body(const track_t *t)
 {
     if (!ambient_latch_enabled || !ambient_grounded_pad(t) || t->eng_req != ENGI_FM6) return 0;
     return ((int32_t)ambient_layer(t)->density - 50) * (1 << 24) / 25;
 }
 static int ambient_warm_pad(const track_t *t)
-{ return ambient_layer(t)->sound == AS_TIDE && ambient_layer(t)->timbre != 0; }
+{ return ambient_layer(t)->role == AS_TIDE && (ambient_layer(t)->patch == 1 || ambient_layer(t)->patch == 2); }
 static int ambient_home_active(const track_t *t)
 {
-    static const uint8_t engines[] = {255, 0, 11, 2, 8};
-    uint32_t sound = ambient_layer(t)->sound;
-    return ambient_latch_enabled && sound && sound <= AS_CLOUD &&
-        t->eng_req == (ambient_fm_pad(t) ? ENGI_FM6 : engines[sound]);
+    const ambient_layer_t *state = ambient_layer(t);
+    const ambient_patch_def_t *patch = ambient_patch_find(state->role, state->patch);
+    return ambient_latch_enabled && patch && t->eng_req == patch->engine;
 }
-static int pulse_active(const track_t *t) { return ambient_home_active(t) && ambient_layer(t)->sound == AS_PULSE; }
+static int ambient_drone_active(const track_t *t)
+{ return ambient_home_active(t) && ambient_layer(t)->role == AS_DRONE; }
+static int ambient_drone_controls(const track_t *t, int32_t *c)
+{
+    if (!ambient_drone_active(t)) return 0;
+    const ambient_layer_t *s = ambient_layer(t);
+    c[0] = s->shape; c[1] = s->motion; c[2] = s->density;
+    return 1;
+}
+static int pulse_active(const track_t *t) { return ambient_home_active(t) && ambient_layer(t)->role == AS_PULSE; }
 static int ambient_scatter_active(const track_t *t) { return ambient_home_active(t) && ambient_layer(t)->mode == AM_SCATTER; }
 static const char *ambient_mode_name(const track_t *t)
 {
     static const char *const names[] = {"HOLD", "SCAT", "SEQ"};
     return names[ambient_layer(t)->mode];
 }
-static int cloud_active(const track_t *t) { return ambient_home_active(t) && ambient_layer(t)->sound == AS_CLOUD; }
+static int cloud_active(const track_t *t) { return ambient_home_active(t) && ambient_layer(t)->role == AS_CLOUD; }
 /* TEXTURE/CLOUD share macro families; their HOLD voice limits differ. */
 static int texture_active(const track_t *t)
 {
-    return ambient_home_active(t) && (ambient_layer(t)->sound == AS_TEXTURE || cloud_active(t));
+    return ambient_home_active(t) && (ambient_layer(t)->role == AS_TEXTURE || cloud_active(t));
 }
 /* Transport gestures occur once, not in the per-sample loops. Keep the
  * bounded four-slot search outside the compiler-inlined audio ISR body. */
@@ -62,34 +129,30 @@ static __attribute__((noinline)) void ambient_pulse_transport(int start)
         else if (!start && arp_sounding(t)) arp_off(t);
     }
 }
-static void ambient_sound_changed(const track_t *t)
+static void ambient_sound_changed(track_t *t)
 {
     ambient_muted &= (uint8_t)~(1u << (t - trk));
-    ambient_layer(t)->sound = AS_NONE;
+    if (ambient_layer(t)->role == AS_DRONE) ambient_latch_forget(t);
+    ambient_layer(t)->role = AS_NONE;
 }
 static int ambient_shape_active(const track_t *t) { return ambient_home_active(t); }
 static int ambient_latch_active(const track_t *t) { return ambient_home_active(t); }
 static uint32_t ambient_latch_count(void) { return ambient_layers[0].count; }
 static const char *ambient_layer_name(uint32_t k)
 {
-    static const char *const names[] = {"TRACK", "TIDE", "TEXTURE", "PULSE", "CLOUD"};
+    static const char *const names[] = {"TRACK", "TIDE", "TEXTURE", "PULSE", "CLOUD", "DRONE"};
     static const char *const tracks[] = {"TRACK1", "TRACK2", "TRACK3", "TRACK4"};
-    if (k < NTRK && ambient_layers[k].sound == AS_TIDE)
-        return tide_timbre_names[ambient_layers[k].timbre];
-    return k < NTRK ? (ambient_layers[k].sound ? names[ambient_layers[k].sound] : tracks[k]) : "TRACK";
+    return k < NTRK ? (ambient_layers[k].role ? names[ambient_layers[k].role] : tracks[k]) : "TRACK";
 }
 static const char *ambient_layer_short_name(uint32_t k)
 {
-    if (k < NTRK && ambient_layers[k].sound == AS_TIDE && ambient_layers[k].timbre)
-        return ambient_layers[k].timbre == 1 ? "T.WARM" : "T.SILK";
     return ambient_layer_name(k);
 }
-static const char *ambient_scene_name(void)
+static const char *ambient_patch_name(void)
 {
-    if (pulse_active(TSEL)) return pulse_timbre_names[ambient_layer(TSEL)->timbre];
-    if (ambient_home_active(TSEL) && ambient_layer(TSEL)->sound == AS_TIDE)
-        return tide_timbre_names[ambient_layer(TSEL)->timbre];
-    return ambient_layer_name(song.sel);
+    const ambient_layer_t *s = ambient_layer(TSEL);
+    const ambient_patch_def_t *patch = ambient_patch_find(s->role, s->patch);
+    return patch ? patch->name : "CUSTOM";
 }
 static const char *ambient_layer_speed_name(const track_t *t) { return pulse_rate_names[ambient_layer(t)->speed]; }
 static const char *ambient_pulse_speed_name(void) { return pulse_active(TSEL) ? pulse_rate_names[ambient_layer(TSEL)->speed] : ""; }
@@ -167,9 +230,9 @@ static void cloud_density_apply(track_t *t)
 static int32_t ambient_shape_amount(const track_t *t)
 {
     ambient_layer_t *s = ambient_layer(t);
-    if (ambient_grounded_pad(t) || ambient_warm_pad(t)) return s->shape;
+    if (ambient_bath_patch(t) || ambient_factory_patch(t) || ambient_grounded_pad(t) || ambient_warm_pad(t)) return s->shape;
     if (pulse_active(t)) return s->shape;
-    if (texture_active(t)) return s->shape;
+    if (texture_active(t) || ambient_drone_active(t)) return s->shape;
     int32_t v = clamp(t->p[P_E4], AMBIENT_SHAPE_MIN, AMBIENT_SHAPE_MAX);
     return (v - AMBIENT_SHAPE_MIN) * 100 / (AMBIENT_SHAPE_MAX - AMBIENT_SHAPE_MIN);
 }
@@ -182,6 +245,11 @@ static int32_t ambient_shape_range(void)
 static void ambient_shape_turn(track_t *t, int32_t steps)
 {
     ambient_layer_t *s = ambient_layer(t);
+    if (ambient_drone_active(t)) {
+        s->shape = (uint8_t)clamp(s->shape + steps, 0, 100); return;
+    }
+    if (ambient_bath_patch(t)) { s->shape = (uint8_t)clamp(s->shape + steps, 0, 100); return; }
+    if (ambient_factory_patch(t)) { if (steps) ui_message("FACTORY TONE"); return; }
     if (ambient_home_active(t) && ambient_grounded_pad(t)) {
         s->shape = (uint8_t)clamp(s->shape + steps, 0, 100);
         t->p[P_E2] = -16 + ambient_two_stage(s->shape, 16, 28);
@@ -201,8 +269,8 @@ static void ambient_shape_turn(track_t *t, int32_t steps)
     }
     if (pulse_active(t)) {
         s->shape = (uint8_t)clamp(s->shape + steps, 0, 100);
-        t->p[P_E2] = pulse_shape_min[s->timbre] + s->shape * pulse_shape_span[s->timbre] / 100;
-        t->p[P_E3] = 6 + s->shape * (s->timbre == 2 ? 34 : 22) / 100;
+        t->p[P_E2] = pulse_shape_min[s->patch] + s->shape * pulse_shape_span[s->patch] / 100;
+        t->p[P_E3] = 6 + s->shape * (s->patch == 2 ? 34 : 22) / 100;
         t->p[P_ATK] = 20 - s->shape * 18 / 100;
         t->p[P_DEC] = 52 + s->shape * 38 / 100;
         t->p[P_SUS] = 0;
@@ -230,6 +298,8 @@ static void ambient_motion_apply(track_t *t)
 {
     ambient_layer_t *s = ambient_layer(t);
     int32_t a = s->motion;
+    if (ambient_drone_active(t) || ambient_bath_patch(t)) return;
+    if (ambient_factory_patch(t)) return;
     if (!ambient_home_active(t))
         return;
     t->p[P_LRATE] = (int16_t)(6 + a * 24 / 100);        /* about 0.07 .. 0.24 Hz */
@@ -278,6 +348,12 @@ static void ambient_density_apply(track_t *t)
 {
     ambient_layer_t *s = ambient_layer(t);
     int32_t a = s->density;
+    if (ambient_drone_active(t) || ambient_bath_patch(t)) return;
+    if (ambient_factory_patch(t)) {
+        /* Density is role timing only; never interpret FM parameters as PHASE. */
+        if (s->role == AS_PULSE) t->p[P_APROB] = 3 + a * 124 / 100;
+        return;
+    }
     if (ambient_home_active(t) && ambient_grounded_pad(t)) {
         t->p[P_CHOR] = t->p[P_E6] = 0;
         return; /* Live harmonic weight is applied before FM6's gain ramp. */
@@ -329,8 +405,25 @@ static void ambient_space_apply(track_t *t)
 {
     ambient_layer_t *s = ambient_layer(t);
     int32_t a = s->space;
-    if (ambient_home_active(t) && s->sound == AS_TIDE)
-        t->p[P_CHOR] = a && !ambient_grounded_pad(t) ? ambient_two_stage(s->density, s->timbre ? 16 : 52, s->timbre ? 96 : 100) : 0;
+    if (ambient_bath_patch(t)) {
+        /* Sound Bath uses reverb only; keep AmbWave shared effects algorithms. */
+        t->p[P_CHOR] = t->p[P_DLY] = 0; s->dry = 32767; return;
+    }
+    if (ambient_factory_patch(t) || ambient_drone_active(t)) {
+        const ambient_patch_def_t *def = ambient_patch_find(s->role, s->patch);
+        const preset_t *pr = &ENGINES[def->engine]->presets[def->role == AS_DRONE ? 1 : def->factory];
+        static const uint8_t ids[] = {P_CHOR, P_DLY, P_REV};
+        static const uint8_t defaults[] = {24, 28, 36};
+        /* 50 restores the factory sends exactly; effects algorithms/buses are unchanged. */
+        for (uint32_t i = 0; i < 3; i++) {
+            int32_t base = pr->fx[i + 1] ? pr->fx[i + 1] - 1 : defaults[i];
+            t->p[ids[i]] = a <= 50 ? base * a / 50 : base + (127 - base) * (a - 50) / 50;
+        }
+        s->dry = a <= 50 ? 32767 : 32767 - (a - 50) * 14367 / 50;
+        return;
+    }
+    if (ambient_home_active(t) && s->role == AS_TIDE)
+        t->p[P_CHOR] = a && !ambient_grounded_pad(t) ? ambient_two_stage(s->density, s->patch ? 16 : 52, s->patch ? 96 : 100) : 0;
     if (ambient_home_active(t) && ambient_warm_pad(t)) {
         t->p[P_DLY] = ambient_space_delay_stage(a, 16, 110);
         t->p[P_REV] = a <= 35 ? a * 42 / 35 : a <= 50 ? 42 + (a - 35) * 18 / 15 : 60 + (a - 50) * 67 / 50;
@@ -363,7 +456,8 @@ static void ambient_pulse_timbre_apply(track_t *t)
 {
     ambient_layer_t *s = ambient_layer(t);
     static const uint8_t waves[] = {0, 3, 6}; /* SAW, DSIN, resonant TRI */
-    t->p[P_E0] = waves[s->timbre];
+    if (s->patch >= NELEM(waves)) return;
+    t->p[P_E0] = waves[s->patch];
     t->p[P_E1] = 0;
     t->p[P_E4] = t->p[P_E5] = t->p[P_E6] = t->p[P_E7] = 0;
     ambient_shape_turn(t, 0);
@@ -441,12 +535,35 @@ static __attribute__((noinline)) int ambient_pulse_toggle(track_t *t, uint32_t n
     return 1;
 }
 
+/* A new gesture replaces the harmony; overlapping presses build its chord.
+ * MIDI ownership is recorded after midi_play; pedal-held notes count as released. */
+static __attribute__((noinline)) void ambient_drone_begin(track_t *t)
+{
+    if (ambient_layer(t)->drone_keys) return;
+    for (uint32_t ch = 0; ch < 16; ch++) for (uint32_t note = 0; note < 128; note++)
+        if (midi_notes[ch][note] == (uint32_t)(t - trk) + 1u) return;
+    ambient_latch_clear(t);
+}
+static int ambient_drone_add(track_t *t, uint32_t note, uint32_t vel)
+{
+    ambient_layer_t *s = ambient_layer(t);
+    for (uint32_t i = 0; i < s->count; i++) if (s->notes[i] == note) return 0;
+    if (s->count == AMBIENT_LATCH_MAX) return 0;
+    s->notes[s->count++] = (uint8_t)note;
+    if (!midi_note_held(t, note)) trk_note_on(t, note, vel);
+    return 1;
+}
 static __attribute__((noinline)) int ambient_latch_toggle(track_t *t, uint32_t note, uint32_t vel)
 {
     ambient_layer_t *s = ambient_layer(t);
     uint32_t i;
     if (!ambient_latch_active(t))
         return 0;
+    if (ambient_drone_active(t)) {
+        int result = ambient_drone_add(t, note, vel);
+        if (result > 0) s->drone_midi_out |= (uint8_t)(1u << (s->count - 1u));
+        return result;
+    }
     if (ambient_scatter_active(t)) return ambient_pulse_toggle(t, note);
     if (s->mode == AM_SEQUENCE) return 0;
     if (texture_active(t) && !cloud_active(t)) return ambient_texture_toggle(t, note, vel);
@@ -474,6 +591,7 @@ static void ambient_motion_turn(track_t *t, int32_t steps)
 {
     ambient_layer_t *s = ambient_layer(t);
     if (!ambient_home_active(t)) return;
+    if (ambient_factory_patch(t)) { if (steps) ui_message("FACTORY TONE"); return; }
     s->motion = (uint8_t)clamp((int32_t)s->motion + steps, 0, 100);
     ambient_motion_apply(t);
 }
@@ -485,6 +603,7 @@ static void ambient_density_turn(track_t *t, int32_t steps)
 {
     ambient_layer_t *s = ambient_layer(t);
     if (!ambient_home_active(t)) return;
+    if (ambient_factory_patch(t) && s->role == AS_TIDE) { if (steps) ui_message("FACTORY TONE"); return; }
     s->density = (uint8_t)clamp((int32_t)s->density + steps, 0, 100);
     ambient_density_apply(t);
 }
@@ -507,17 +626,20 @@ static void ambient_latch_midi_off(track_t *t)
     ambient_layer_t *s = ambient_layer(t);
     uint32_t i, mc = trk_midi_ch((uint32_t)(t - trk));
     for (i = 0; i < s->count; i++)
-        midi_out_event(0x08u | (0x80u | mc) << 8 | (uint32_t)s->notes[i] << 16);
+        if (s->role != AS_DRONE || (s->drone_midi_out & (1u << i))) midi_out_event(0x08u | (0x80u | mc) << 8 | (uint32_t)s->notes[i] << 16);
 }
 static __attribute__((noinline)) void ambient_latch_forget(track_t *t)
 {
     ambient_latch_midi_off(t);
     ambient_layer(t)->count = ambient_layer(t)->arp_gate = 0;
+    ambient_layer(t)->drone_keys = 0;
+    ambient_layer(t)->drone_midi_out = 0;
 }
 static void ambient_latch_clear(track_t *t)
 {
     ambient_layer_t *s = ambient_layer(t);
     ambient_latch_midi_off(t);
+    s->drone_keys = 0; s->drone_midi_out = 0;
     while (s->count) {
         uint32_t note = s->notes[--s->count];
         if (!midi_note_held(t, note)) {
@@ -537,7 +659,7 @@ static void ambient_pulse_presets_turn(int32_t steps)
 {
     track_t *t = &trk[2];
     uint32_t f = motion_guard();
-    ambient_layer(t)->timbre = (uint8_t)((ambient_layer(t)->timbre + (steps > 0 ? 1 : 2)) % 3);
+    ambient_layer(t)->patch = (uint8_t)((ambient_layer(t)->patch + (steps > 0 ? 1 : 2)) % 3);
     ambient_pulse_timbre_apply(t);
     motion_unguard(f);
 }
@@ -545,13 +667,18 @@ static void ambient_pulse_presets_turn(int32_t steps)
 static void ambient_mode_apply(track_t *t)
 {
     ambient_layer_t *s = ambient_layer(t);
+    if (ambient_drone_active(t)) { s->mode = AM_HOLD; t->p[P_AMODE] = 0; return; }
     t->p[P_AMODE] = s->mode == AM_SCATTER ? 4 : 0;
     t->p[P_AHOLD] = 0; t->p[P_AOCT] = 1; t->p[P_ASWING] = 0;
     t->p[P_ARATE] = pulse_rates[s->speed]; t->p[P_AGATE] = 32;
+    if (ambient_factory_patch(t) || ambient_bath_patch(t)) {
+        t->p[P_APROB] = s->role == AS_PULSE ? 3 + s->density * 124 / 100 : 127;
+        return; /* Factory ADSR/operator envelopes belong to the sound, not the role. */
+    }
     if (!pulse_active(t)) {
         t->p[P_APROB] = 127;
         t->p[P_ATK] = s->mode == AM_HOLD ? 88 : 24;
-        t->p[P_REL] = s->mode == AM_HOLD ? (s->sound == AS_TIDE ? 112 : 96) : 48;
+        t->p[P_REL] = s->mode == AM_HOLD ? (s->role == AS_TIDE ? 112 : 96) : 48;
     } else ambient_density_apply(t);
     if (ambient_grounded_pad(t)) {
         uint8_t patch[FP_SIZE + 1u];
@@ -615,6 +742,7 @@ static void ambient_mode_set(track_t *t, uint32_t mode)
 {
     ambient_layer_t *s = ambient_layer(t);
     uint32_t k = (uint32_t)(t - trk), f;
+    if (ambient_drone_active(t)) { ui_message("DRONE IS SUSTAINED"); return; }
     if (!ambient_home_active(t) || mode > AM_SEQUENCE || s->mode == mode) return;
     if (chain_busy()) { ui_message("STOP SONG FIRST"); return; }
     f = motion_guard();
@@ -663,14 +791,15 @@ static void ambient_tide_patch(track_t *t)
     t->p[P_ED_FLT]=t->p[P_LD_PIT]=t->p[P_LD_SHP]=t->p[P_LD_AMP]=0;
 }
 
-static void ambient_sound_apply(track_t *t, uint32_t sound, uint32_t timbre)
+static void ambient_patch_apply(track_t *t, uint32_t role, uint32_t patch_id)
 {
+    const ambient_patch_def_t *patch_def = ambient_patch_find(role, patch_id);
+    if (!patch_def) return; /* Reject incompatible pairs before touching live state. */
     ambient_layer_t *s = ambient_layer(t);
     uint32_t k = (uint32_t)(t - trk), muted = ambient_muted & (1u << k);
     int16_t level = t->p[P_LEVEL];
     uint8_t mode = s->mode, speed = s->speed, speed_set = s->speed_set, length = s->cloud_length;
     uint32_t f = motion_guard();
-    static const uint8_t engines[] = {0, 0, 11, 2, 8};
     ambient_latch_clear(t);
     trk_all_off(t);
     t->nheld = t->arp_phys = t->arp_note = t->xp_n = 0;
@@ -678,20 +807,50 @@ static void ambient_sound_apply(track_t *t, uint32_t sound, uint32_t timbre)
      * existing preset loader under our outer IRQ guard, rather than the
      * general engine helper which unconditionally enables IRQs on return. */
     load_begin(t, UNDO_SOUND);
-    t->eng_req = sound == AS_TIDE && timbre != 1 ? ENGI_FM6 : engines[sound];
-    apply_preset_to(t, t->eng_req == ENGI_FM6 ? 4 : sound == AS_TIDE ? AMBIENT_ANALOG_PRESET : 0);
-    load_end(t);
+    t->eng_req = patch_def->engine;
+    if (patch_def->factory != 255) {
+        apply_preset_to(t, role == AS_DRONE ? 1 : patch_def->factory);
+        memset(s, 0, sizeof *s);
+        s->role = role; s->patch = patch_id; s->mode = mode;
+        s->speed = speed; s->speed_set = speed_set; s->cloud_length = length;
+        s->shape = 50; s->motion = 0; s->density = 50; s->space = 50; s->dry = 32767;
+        t->p[P_LEVEL] = level; t->p[P_MUTE] = 0;
+        ambient_muted = (uint8_t)((ambient_muted & ~(1u << k)) | muted);
+        if (ambient_bath_patch(t)) {
+            ambient_bath_clock[k] = 0;
+            /* Adapted from sound-bath/sound_bath.c:bath_patch_audio (GPL-3.0-only),
+             * commit 0a628cccf50ed429725c55e019029997f20ea85d.
+             * Exact PHYS preset 3; BOWL STUDY changes only these three values. */
+            if (patch_id == 9) { t->p[P_ATK] = 0; t->p[P_REL] = 100; t->p[P_E6] = 0; }
+            s->density = (uint8_t)t->p[P_E6]; s->space = 0;
+            t->p[P_CHOR] = t->p[P_DLY] = t->p[P_REV] = 0;
+            t->p[P_LD_PIT] = t->p[P_LD_FLT] = t->p[P_LD_SHP] = t->p[P_LD_AMP] = 0;
+        }
+        if (role == AS_DRONE) {
+            s->mode = AM_HOLD; s->motion = 25;
+            /* Separate role profile: source bank and ordinary factory audition stay untouched. */
+            t->p[P_LD_PIT] = t->p[P_LD_FLT] = t->p[P_LD_SHP] = t->p[P_LD_AMP] = 0;
+            t->p[P_AHOLD] = 0;
+            drone_reset(t);
+        }
+        ambient_mode_apply(t);
+        load_end(t);
+        motion_unguard(f);
+        ui.force = 1;
+        return;
+    }
+    apply_preset_to(t, t->eng_req == ENGI_FM6 ? 4 : role == AS_TIDE ? AMBIENT_ANALOG_PRESET : 0);
     memset(s, 0, sizeof *s);
-    s->sound = (uint8_t)sound; s->timbre = (uint8_t)timbre; s->mode = mode; s->speed = speed;
+    s->role = (uint8_t)role; s->patch = (uint8_t)patch_id; s->mode = mode; s->speed = speed;
     s->speed_set = speed_set; s->cloud_length = length;
-    s->shape = 35; s->motion = 25; s->density = sound == AS_TEXTURE ? 25 : 50; s->space = 50;
+    s->shape = 35; s->motion = 25; s->density = role == AS_TEXTURE ? 25 : 50; s->space = 50;
     if (ambient_grounded_pad(t)) s->shape = 50;
     if (ambient_warm_pad(t)) { s->shape = 50; s->space = 35; }
     t->p[P_LEVEL] = level; t->p[P_MUTE] = 0; t->p[P_AMODE] = 0; t->p[P_CHOR] = 0;
     ambient_muted = (uint8_t)((ambient_muted & ~(1u << k)) | muted);
     t->p[P_ATK] = 88; t->p[P_DEC] = 96; t->p[P_SUS] = 120; t->p[P_REL] = 96;
-    if (sound == AS_TIDE) {
-        if (timbre == 2) {
+    if (role == AS_TIDE) {
+        if (patch_id == 2) {
             uint8_t patch[FP_SIZE + 1u];
             memcpy(patch, fm6_patch[k], sizeof patch);
             patch[FP_LPMD] = 0; /* richness without pitch wobble */
@@ -705,17 +864,17 @@ static void ambient_sound_apply(track_t *t, uint32_t sound, uint32_t timbre)
             fm6_set_patch(k, patch); fm6_adopt(k);
             t->p[P_E1] = -1; t->p[P_E3] = t->p[P_E4] = t->p[P_E5] = 0;
             t->p[P_ED_FLT] = 0;
-        } else if (timbre == 1) {
+        } else if (patch_id == 1) {
             t->p[P_E3] = 0; t->p[P_E5] = 6; t->p[P_E6] = 12; t->p[P_E7] = 48;
             t->p[P_ED_FLT] = 0; t->p[P_SUS] = 124;
         } else {
             ambient_tide_patch(t);
             t->p[P_REL] = 112;
         }
-    } else if (sound == AS_TEXTURE) {
+    } else if (role == AS_TEXTURE) {
         t->p[P_E0] = 0; t->p[P_E3] = 18; t->p[P_E4] = 24;
         t->p[P_E6] = t->p[P_E7] = 0;
-    } else if (sound == AS_CLOUD) {
+    } else if (role == AS_CLOUD) {
         t->p[P_E0] = 2; t->p[P_E1] = 50; t->p[P_E4] = t->p[P_E6] = 0;
     } else {
         t->p[P_AMODE] = 4; t->p[P_AHOLD] = 0; t->p[P_AOCT] = 1;
@@ -725,20 +884,33 @@ static void ambient_sound_apply(track_t *t, uint32_t sound, uint32_t timbre)
     ambient_shape_turn(t, 0); ambient_motion_apply(t);
     ambient_density_apply(t); ambient_space_apply(t);
     ambient_mode_apply(t);
+    load_end(t);
     motion_unguard(f);
     ui.force = 1;
 }
-/* Every HOME has the same curated list. PULSE variants share clock behavior. */
+/* PRESET auditions only compatible patches; HOME + PRESET changes role. */
 static void ambient_presets_turn(int32_t steps)
 {
     ambient_layer_t *s = ambient_layer(TSEL);
-    static const uint8_t sounds[] = {AS_TIDE, AS_TEXTURE, AS_CLOUD, AS_PULSE, AS_PULSE, AS_PULSE, AS_TIDE, AS_TIDE};
-    static const uint8_t timbres[] = {0, 0, 0, 0, 1, 2, 1, 2};
-    int32_t index = s->sound == AS_TIDE ? (s->timbre ? 5 + s->timbre : 0) : s->sound == AS_TEXTURE ? 1 : s->sound == AS_CLOUD ? 2 : 3 + s->timbre;
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < NELEM(ambient_patches); i++) count += ambient_patches[i].role == s->role;
+    if (!steps || count < 2) return; /* One-patch roles must not interrupt playing. */
+    uint32_t patch = ((int32_t)s->patch + steps % (int32_t)count + count) % count;
+    if (patch == s->patch) return;
+    ambient_patch_apply(TSEL, s->role, patch);
+    ui_message(ambient_patch_name());
+}
+static void ambient_roles_turn(int32_t steps)
+{
+    static const uint8_t roles[] = {AS_TIDE, AS_TEXTURE, AS_CLOUD, AS_PULSE, AS_DRONE};
+    ambient_layer_t *s = ambient_layer(TSEL);
+    int32_t index;
     if (!steps) return;
-    index = (index + steps % 8 + 8) % 8;
-    ambient_sound_apply(TSEL, sounds[index], timbres[index]);
-    ui_message(ambient_scene_name());
+    for (index = 0; index < (int32_t)NELEM(roles); index++) if (roles[index] == s->role) break;
+    index = (index + steps % (int32_t)NELEM(roles) + NELEM(roles)) % NELEM(roles);
+    if (roles[index] == s->role) return;
+    ambient_patch_apply(TSEL, roles[index], 0);
+    ui_message(ambient_layer_name(song.sel));
 }
 static void ambient_boot_apply(void)
 {
@@ -756,7 +928,7 @@ static void ambient_boot_apply(void)
         ambient_layers[i].mode = i == 2 ? AM_SCATTER : AM_HOLD;
         ambient_layers[i].speed = i == 3 ? 0 : 2;
         ambient_layers[i].speed_set = 0; ambient_layers[i].cloud_length = 1;
-        ambient_sound_apply(&trk[i], sounds[i], 0);
+        ambient_patch_apply(&trk[i], sounds[i], 0);
         trk[i].engine = trk[i].eng_req;
         trk[i].p[P_LEVEL] = levels[i];
         ambient_level[i] = LEVEL_Q12[levels[i]];
@@ -764,5 +936,29 @@ static void ambient_boot_apply(void)
         pat_sig[i] = steps_sig(&trk[i]); pat_last[i] = 0;
     }
     song.sel = song.playing = song.rec = transport_req = 0;
+}
+#endif
+
+#if AMBIENT_POC
+/* Adapted from Sound Bath bath_audio's control approach, GPL-3.0-only.
+ * Audition/WAV cadence: one integer step every two audio blocks. Motion uses
+ * AmbWave's existing per-track DRIFT LFO, with a neutral default of zero.
+ * Density is the source EXCITE value (0..100), not an envelope rewrite. */
+static __attribute__((noinline)) void ambient_bath_tick(track_t *t)
+{
+    if (!ambient_home_active(t) || !ambient_bath_patch(t)) return;
+    if (++ambient_bath_clock[t - trk] < 2) return;
+    ambient_bath_clock[t - trk] = 0;
+    const ambient_layer_t *s = ambient_layer(t);
+    const preset_t *p = &ENGINES[ENGI_PHYS]->presets[3];
+    int32_t offset = ((int32_t)s->shape - 50) * 20 / 50;
+    int32_t target[3] = {clamp(p->e[2] + offset, 0, 127), s->density, s->space * 64 / 100};
+    static const uint8_t id[3] = {P_E2, P_E6, P_REV};
+    for (uint32_t k = 0; k < 3; k++) t->p[id[k]] += (t->p[id[k]] < target[k]) - (t->p[id[k]] > target[k]);
+    /* Neutral must retain the source LFO clock too: even an inaudible LFO
+     * consumes shared RNG at wraps and otherwise reseeds later PHYS strikes. */
+    t->p[P_LWAVE] = s->motion ? 5 : TP[P_LWAVE].def;
+    t->p[P_LRATE] = s->motion ? 6 + s->motion * 24 / 100 : TP[P_LRATE].def;
+    t->p[P_LD_FLT] = s->motion * 8 / 100;
 }
 #endif

@@ -37,6 +37,56 @@
 #define FM6_OWN FM6_NFACTORY     /* SLOT: the track's own patch (F1..F8 before it) */
 #define FM6_PACKED 128u
 
+/* Listening experiment only. Factory builds compile out both code and state. */
+#ifndef TIDE_BREATH_EXPERIMENT
+#define TIDE_BREATH_EXPERIMENT 0
+#endif
+#if TIDE_BREATH_EXPERIMENT && AMBIENT_POC
+static int32_t ambient_tide_breath_motion(const track_t *t);
+static struct {
+    uint32_t phase, rng, increment;
+    int32_t gain;
+} tide_breath[NTRK][FM6_POLY];
+
+static void tide_breath_start(track_t *t, voice_t *v)
+{
+    uint32_t tr = (uint32_t)(t - trk), vi = (uint32_t)(v - t->v);
+    uint32_t seed = (v->note + 1u) * 0x9E3779B9u ^ (tr + 1u) * 0x85EBCA6Bu ^ (vi + 1u) * 0xC2B2AE35u;
+    tide_breath[tr][vi].rng = seed ? seed : 1u;
+    tide_breath[tr][vi].phase = seed;
+    tide_breath[tr][vi].increment = (uint32_t)(0x100000000ull * CTL / (FS * (12u + seed % 14u)));
+    tide_breath[tr][vi].gain = 32767;
+}
+
+/* Once per voice/block. Never touches stored parameters, pitch or the shared
+ * random stream. Existing FM output/index ramps handle the block transitions. */
+static __attribute__((noinline)) int32_t tide_breath_tick(track_t *t, voice_t *v, int32_t *amp0, int32_t *amp1)
+{
+    uint32_t tr = (uint32_t)(t - trk), vi = (uint32_t)(v - t->v);
+    int32_t motion = ambient_tide_breath_motion(t), gain = 32767, index = 0;
+    if (motion) {
+        uint32_t old = tide_breath[tr][vi].phase;
+        tide_breath[tr][vi].phase += tide_breath[tr][vi].increment * (75u + (uint32_t)motion) / 100u;
+        if (tide_breath[tr][vi].phase < old) {
+            uint32_t r = tide_breath[tr][vi].rng;
+            r ^= r << 13; r ^= r >> 17; r ^= r << 5;
+            tide_breath[tr][vi].rng = r;
+            tide_breath[tr][vi].increment = (uint32_t)(0x100000000ull * CTL / (FS * (12u + r % 14u)));
+        }
+        /* Smooth cosine breath, 0..32767, independently phased per note. */
+        int32_t breath = (osc_sine(tide_breath[tr][vi].phase) + 32768) >> 1;
+        int32_t depth = motion <= 25 ? motion * 6760 / 25 : 6760 + (motion - 25) * 2810 / 75;
+        gain -= ((32767 - breath) * depth) >> 15; /* default <=2 dB; maximum <=3 dB */
+        index = ((breath - 16384) * motion * 2) >> 15; /* about +/-0.6 dB index at default */
+    }
+    /* Preserve exact unity arithmetic for Motion0 and unaffected FM sounds. */
+    if (tide_breath[tr][vi].gain != 32767) *amp0 = mulq15(*amp0, tide_breath[tr][vi].gain);
+    if (gain != 32767) *amp1 = mulq15(*amp1, gain);
+    tide_breath[tr][vi].gain = gain;
+    return index;
+}
+#endif
+
 static uint8_t fm6_patch[NTRK][FP_SIZE + 1u];   /* the tracks' patches (main loop writes, then fm6_pgen) */
 static volatile uint8_t fm6_pgen[NTRK];          /* +1 after each write of fm6_patch[t] */
 static uint8_t fm6_slot[NTRK];                   /* the SLOT value last loaded (main loop); 0xFF = none */
@@ -310,6 +360,9 @@ static void fm6_note_on(track_t *t, voice_t *v)
     p = fm6_eff[tr].p;
     fm6_note_init(n, p, (int32_t)v->note + p[FP_TRNSP] - 24, v->mvel ? v->mvel : v->vel,
                   (!v->env && !v->env_out) || !n->live);    /* from silence: phases and gains from 0 */
+#if TIDE_BREATH_EXPERIMENT && AMBIENT_POC
+    tide_breath_start(t, v);
+#endif
     fm6_lfo_key(&fm6_lfo[tr]);
 }
 
@@ -345,6 +398,9 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
     uint32_t tr = (uint32_t)(t - trk), i;
     const uint8_t *p;
     int32_t bus[FM6_N], lf, fb, lvl, k, a, da;
+#if TIDE_BREATH_EXPERIMENT && AMBIENT_POC
+    int32_t amp0 = m->amp0, amp1 = m->amp1;
+#endif
     if (!n || !n->live || len != FM6_N)
         return;
     p = fm6_eff[tr].p;
@@ -353,6 +409,9 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
     lf = fm6_note_logfreq(m->pitch16 + (p[FP_TRNSP] - 24) * 16, m->fine);
     fb = clamp(fm6_eff[tr].fb + ((m->shape - (64 << 8)) >> 11), 0, 7);
     lvl = clamp(t->p[P_E2], -64, 63) * 24 + clamp(m->cutoff >> 8, -150, 150) * 16;   /* microsteps */
+#if TIDE_BREATH_EXPERIMENT && AMBIENT_POC
+    lvl += tide_breath_tick(t, v, &amp0, &amp1);
+#endif
 #if AMBIENT_POC
     n->carrier_body = ambient_tide_body(t);
 #endif
@@ -360,8 +419,13 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
         return;                                         /* every carrier below the threshold */
     /* the voice's amplitude ramp x VOICE_FS (one carrier at full: VOICE_FS / 2), six voices in unison ~ one */
     k = t->p[P_VOICE] == V_UNISON ? VOICE_FS * 2 / 5 : VOICE_FS;
+#if TIDE_BREATH_EXPERIMENT && AMBIENT_POC
+    a = mulq15(amp0, k);
+    da = (mulq15(amp1, k) - a) >> FM6_LG_N;
+#else
     a = mulq15(m->amp0, k);
     da = (mulq15(m->amp1, k) - a) >> FM6_LG_N;
+#endif
     for (i = 0; i < FM6_N; i++) {
         int32_t x = bus[i] - n->dc;
         n->dc += x >> 10;                                 /* a one-pole high-pass, ~7 Hz: FM puts sidebands at 0 Hz */

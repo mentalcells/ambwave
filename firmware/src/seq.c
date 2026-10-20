@@ -41,21 +41,29 @@ static volatile uint8_t panic_req;       /* bit per track: release every soundin
 static volatile uint8_t midi_hint;       /* MIDI IN played track n - 1, which is not the selected one (the UI says so) */
 
 #if AMBIENT_POC
-/* ambient.c owns the scene policy and state; it is included later because its
+/* ambient.c owns the role/patch policy and state; it is included later because its
  * boot setup also uses the UI's preset helpers. */
-enum { AS_NONE, AS_TIDE, AS_TEXTURE, AS_PULSE, AS_CLOUD };
+enum { AS_NONE, AS_TIDE, AS_TEXTURE, AS_PULSE, AS_CLOUD, AS_DRONE };
 enum { AM_HOLD, AM_SCATTER, AM_SEQUENCE };
 typedef struct {
-    uint8_t sound, mode, count, notes[4], arp_gate;
-    uint8_t shape, motion, density, space, timbre, speed;
-    uint8_t cloud_length, speed_set;
+    /* role + patch is a stable, role-scoped identity, independent of mode.
+     * This metadata remains runtime-only; project/preset wire formats are unchanged. */
+    uint8_t role, mode, count, notes[4], arp_gate;
+    uint8_t shape, motion, density, space, patch, speed;
+    uint8_t cloud_length, speed_set, drone_midi_out;
     int16_t dry;
+    uint32_t drone_keys; /* physical keys still down, independent of selection */
 } ambient_layer_t;
 static ambient_layer_t ambient_layers[NTRK];
 static uint8_t ambient_mix;
 static ambient_layer_t *ambient_layer(const track_t *t);
 static void ambient_presets_turn(int32_t steps);
+static int ambient_macro_locked(const track_t *t, uint32_t macro);
+static void ambient_roles_turn(int32_t steps);
 static void ambient_latch_clear(track_t *t);
+static int ambient_drone_active(const track_t *t);
+static void ambient_drone_begin(track_t *t);
+static int ambient_drone_add(track_t *t, uint32_t note, uint32_t vel);
 static void ambient_latch_midi_off(track_t *t);
 static void ambient_shape_turn(track_t *t, int32_t steps);
 static void ambient_motion_apply(track_t *t);
@@ -71,7 +79,7 @@ static uint32_t ambient_mute_leds(uint32_t *br);
 static const char *ambient_pulse_speed_name(void);
 static const char *ambient_layer_speed_name(const track_t *t);
 static void ambient_pulse_speed_turn(int32_t steps);
-static void ambient_sound_changed(const track_t *t);
+static void ambient_sound_changed(track_t *t);
 static int ambient_latch_active(const track_t *t);
 static int ambient_latch_note_held(const track_t *t, uint32_t note);
 static int ambient_latch_toggle(track_t *t, uint32_t note, uint32_t vel);
@@ -86,7 +94,7 @@ static const char *ambient_mode_name(const track_t *t);
 static void ambient_pulse_transport(int start);
 static void ambient_pulse_presets_turn(int32_t steps);
 static uint32_t ambient_latch_count(void);
-static const char *ambient_scene_name(void);
+static const char *ambient_patch_name(void);
 static const char *ambient_layer_name(uint32_t k);
 static const char *ambient_layer_short_name(uint32_t k);
 static int ambient_shape_active(const track_t *t);
@@ -487,6 +495,10 @@ static void key_on(uint32_t k, track_t *t)
     kb_chn[k] = 0;
 #if AMBIENT_POC
     if (ambient_latch_active(t) && ambient_layer(t)->mode != AM_SEQUENCE && !song.seq_mode) {
+        if (ambient_drone_active(t)) {
+            ambient_drone_begin(t);
+            ambient_layer(t)->drone_keys |= 1u << k;
+        }
         for (i = 0; i < n; i++) {
             uint32_t x = kb_chord[k][i];
             if (!ambient_scatter_active(t) && texture_active(t) && !cloud_active(t) && i) break;
@@ -513,6 +525,9 @@ static void key_on(uint32_t k, track_t *t)
 /* key k is up: the notes it started end, but those another key still holds */
 static void key_off(uint32_t k, track_t *t)
 {
+#if AMBIENT_POC
+    ambient_layer(t)->drone_keys &= ~(1u << k);
+#endif
     uint32_t n = kb_chn[k], i, mc = trk_midi_ch(trk_index(t));
     kb_chn[k] = 0;
     for (i = 0; i < n; i++) {

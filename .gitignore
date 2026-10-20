@@ -13,3 +13,12 @@ __pycache__/
 *.pem
 *.p12
 *.pfx
+
+# Worktree dependency symlinks
+/.venv
+/.toolchains
+
+# Local development handoffs and migration records; excluded from public source.
+/docs/SESSION_HANDOFF.md
+/docs/SOUND_BATH_BASELINE.md
+/.private/

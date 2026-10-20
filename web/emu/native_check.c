@@ -29,10 +29,38 @@ int main(int argc, char **argv)
     web_nor_erase();
     web_boot();
 #if AMBIENT_POC
+    if (argc > 2 && !strcmp(argv[2], "drone")) {
+        render(1000); rec = 1;
+        web_buttons(1u << B_HOME); render(40);
+        web_enc(EN_PRESET,-1); render(40); web_buttons(0); render(40);
+        web_keys((1u<<7)|(1u<<11)); render(60); web_keys(0); render(60000);
+        web_enc(EN_ALGO,1); render(40);
+        web_keys(1u<<14); render(60); web_keys(0); render(1000);
+        web_enc(EN_ALGO,-1); render(40);
+        web_keys((1u<<9)|(1u<<13)); render(60); web_keys(0); render(1000);
+        for(uint32_t knob=EN_K1;knob<=EN_K4;knob++) { web_enc(knob,20); render(40); }
+        render(3000); fclose(out); return 0;
+    }
+    if (argc > 2 && (!strcmp(argv[2], "factory-tide") || !strcmp(argv[2], "factory-pulse"))) {
+        uint32_t pulse = !strcmp(argv[2], "factory-pulse"), count = pulse ? 6 : 10;
+        render(1000); rec = 1;
+        if (pulse) {
+            for (uint32_t k = 0; k < 2; k++) { web_enc(EN_ALGO, 1); render(40); }
+            web_buttons(1u << B_PLAY); render(60); web_buttons(0); render(60);
+        }
+        for (uint32_t patch = 1; patch < count; patch++) {
+            web_enc(EN_PRESET, 1); render(40);
+            if (patch < 3) continue;
+            web_keys((1u << 7) | (1u << 11)); render(60); web_keys(0); render(2000);
+        }
+        fclose(out); return 0;
+    }
     if (argc > 2 && !strcmp(argv[2], "pads")) {
         render(1000);rec=1;
         for(uint32_t pad=0;pad<2;pad++) {
-            web_enc(EN_PRESET,-1);render(40);
+            for (uint32_t turn = 0; turn < (pad ? 1u : 2u); turn++) {
+                web_enc(EN_PRESET,pad ? -1 : 1);render(40);
+            }
             web_keys((1u<<7)|(1u<<11)|(1u<<14));render(60);web_keys(0);render(4000);
             web_keys((1u<<7)|(1u<<11)|(1u<<14));render(60);web_keys(0);render(4000);
         }

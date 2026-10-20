@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Independent role and compatible sound selection on all four tracks.
+- Autonomous DRONE role using the existing analog soft pad, chord replacement,
+  slow evolution and sustained playback independent of PLAY/STOP.
+- Existing Felucca factory pad, choir, bell, marimba and electric-piano auditions.
+- TIDE BOWED METAL and BOWL STUDY resonances, with brightness, drift, excitation
+  and reverb controls using the existing PHYS engine.
+- Firmware and full host suite pass, including unchanged golden engine renders,
+  CPU/storage guards, exhaustive layouts and native/WebAssembly parity.
+
+These changes are development source; published v0.1.0 assets and the hosted
+browser demo are unchanged. Complete scene recall and ORDERED arp playback are
+not implemented. Hardware musical acceptance and measured timing remain pending.
+
 ## 0.1.0 — 2026-10-17
 
 First AmbWave MVP, previously developed as Hasake, based on Felucca 1.0.5.2.

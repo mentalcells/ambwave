@@ -1164,11 +1164,13 @@ static void ui_input(void)
      * pass runs, so one landing after the layer's read went to the page as well: KNOB 1..4 edited the layer's control
      * and the page under it (HOME's sound, motion recorded), PRESETS could load a sound. They stay for the next pass */
     kq |= lay;
-    if (!lay && (s = panel_enc(EN_PRESET)) != 0)
+    if (!lay && (s = panel_enc(EN_PRESET)) != 0) {
 #if AMBIENT_POC
-        if (!ambient_mix) /* A mixer gesture cannot accidentally replace either sound. */
+        if (ambient_mix && ambient_home_keys_held()) ambient_roles_turn(s);
+        else if (!ambient_mix)
 #endif
         presets_turn(s);
+    }
     if (!lay && (s = panel_enc(EN_ALGO)) != 0)     /* ALGORITHM: the selected track, on every page */
         track_select((uint32_t)clamp((int32_t)song.sel + (s > 0 ? 1 : -1), 0,
             NTRK - 1));

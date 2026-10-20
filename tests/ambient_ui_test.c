@@ -15,14 +15,15 @@ int main(int argc, char **argv)
     snprintf(path,sizeof path,"%s/text_audit.tsv",out);audf=fopen(path,"w");
     for(uint32_t p=0;p<NPALETTES;p++) for(uint32_t style=ST_FLAT;style<=ST_LINE;style++)
     for(uint32_t large=0;large<2;large++) for(uint32_t selected=0;selected<4;selected++)
-    for(uint32_t timbre=0;timbre<3;timbre++) for(uint32_t muted=0;muted<16;muted++)
-    for(uint32_t playback=0;playback<3;playback++) for(uint32_t rotation=0;rotation<4;rotation++) for(uint32_t mix=0;mix<2;mix++) {
+    for(uint32_t timbre=0;timbre<10;timbre++) for(uint32_t muted=0;muted<16;muted++)
+    for(uint32_t playback=0;playback<3;playback++) for(uint32_t rotation=0;rotation<5;rotation++) for(uint32_t mix=0;mix<2;mix++) {
         ui_power_on();song.sel=selected;
-        static const uint8_t sounds[]={AS_TIDE,AS_TEXTURE,AS_PULSE,AS_CLOUD};
+        static const uint8_t sounds[]={AS_TIDE,AS_TEXTURE,AS_PULSE,AS_CLOUD,AS_DRONE};
         for(uint32_t k=0;k<NTRK;k++) {
-            ambient_sound_apply(&trk[k],sounds[(k+rotation)%4],timbre);
-            ambient_layers[k].count=1; ambient_layers[k].speed=3; ambient_layers[k].mode=(playback+k)%3;
-            ambient_layers[k].cloud_length=timbre;
+            uint8_t role = sounds[(k+rotation)%5];
+            ambient_patch_apply(&trk[k],role,role == AS_TIDE ? timbre : role == AS_PULSE ? timbre % 6 : 0);
+            ambient_layers[k].count=1; ambient_layers[k].speed=3; ambient_layers[k].mode=role == AS_DRONE ? AM_HOLD : (playback+k)%3;
+            ambient_layers[k].cloud_length=timbre % 3;
         }
         ambient_muted=muted;ambient_mix=mix;
         trk[0].p[P_LEVEL]=trk[1].p[P_LEVEL]=trk[2].p[P_LEVEL]=127;
@@ -32,6 +33,11 @@ int main(int argc, char **argv)
         if(large)ui_prefs|=PREF_LARGE;else ui_prefs&=~PREF_LARGE;
         snprintf(name,sizeof name,"HOME %u timbre %u mute %u mix %u palette %u style %u large %u",selected,timbre,muted,mix,p,style,large);
         cur_name=name;draw(-1);lint();mono_check();screens++;
+        if(rotation==4&&selected==0&&p==UI_GREY_INDEX&&style==ST_FLAT&&!large&&timbre==0&&muted==0&&playback==0)
+            write_ppm(out,"GREY",mix?"drone_mix":"drone_home");
+        if(rotation==0&&p==UI_GREY_INDEX&&style==ST_FLAT&&!large&&muted==0&&playback==0&&!mix&&
+           ((selected==0&&(timbre==7||timbre==8||timbre==9))||(selected==2&&timbre==3)))
+            write_ppm(out,"GREY",selected==0?(timbre==8?"bath_bowed":timbre==9?"bath_bowl":"factory_choir"):"factory_bell");
         if(rotation==0&&selected==3&&p==UI_GREY_INDEX&&style==ST_FLAT&&!large&&timbre==0&&muted==0)
             write_ppm(out,"GREY",mix?"cloud_mix":"cloud_home");
         if(rotation==0&&p==UI_GREY_INDEX&&style==ST_FLAT&&!large&&selected==2&&timbre==0&&muted==5) {

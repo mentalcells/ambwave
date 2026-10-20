@@ -143,10 +143,12 @@ const mixControls = [0, 1, 2, 3].map((track) => {
 function drawMix(states) {
   document.getElementById("mixer").hidden = false;
   states.forEach((state, track) => {
-    const c = mixControls[track], sound = (state >>> 16) & 255, timbre = state >>> 24;
-    const name = sound === 1 ? ["TIDE", "T.WARM", "T.SILK"][timbre] :
-      sound === 2 ? "TEXTURE" : sound === 3 ? ["PULSE", "PULSE MALLET", "PULSE BELL"][timbre] : sound === 4 ? "CLOUD" : "TRACK";
+    const c = mixControls[track], role = (state >>> 16) & 255, patch = state >>> 24;
+    const name = ["TRACK", "TIDE", "TEXTURE", "PULSE", "CLOUD", "DRONE"][role] || "TRACK";
+    const patches = { 1: ["BODY PAD", "WARM PAD", "SILK PAD", "FM SOFT PAD", "AN SOFT PAD", "AN STRINGS", "AN PWM STR", "CHOIR AAH"], 2: ["NOISE"],
+      3: ["WARM PLUCK", "SOFT MALLET", "BELL PLUCK", "GLASS BELL", "FM MARIMBA", "FM TINE EP"], 4: ["GRAIN"], 5: ["AN SOFT PAD"] };
     c.title.textContent = `${track + 1} · ${name}`;
+    c.title.title = patches[role]?.[patch] || "CUSTOM";
     c.mute.setAttribute("aria-label", `Mute track ${track + 1} ${name}`);
     c.range.value = state & 255; c.output.textContent = `${Math.floor((state & 255) * 100 / 127)}%`;
     c.mute.checked = !!(state & 256);

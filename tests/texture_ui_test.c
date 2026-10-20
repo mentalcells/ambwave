@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     if (!rep) return 1;
     for (p = 0; p < NPALETTES; p++) for (z = 0; z < 2; z++)
         for (st = 0; st < 2; st++) for (focus = 0; focus < 3; focus++) for (mix = 0; mix < 2; mix++) for (timbre = 0; timbre < 3; timbre++) {
-            state(); ambient_boot_apply(); ambient_layers[2].timbre = timbre; ambient_pulse_timbre_apply(&trk[2]); pal(p);
+            state(); ambient_boot_apply(); ambient_layers[2].patch = timbre; ambient_pulse_timbre_apply(&trk[2]); pal(p);
             ui_style = (uint8_t)st; style_apply();
             if (z) ui_prefs |= PREF_LARGE; else ui_prefs &= ~PREF_LARGE;
             song.sel = focus; ambient_mix = mix;

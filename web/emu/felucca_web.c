@@ -402,7 +402,7 @@ EXPORT uint32_t web_mix_state(uint32_t k)
 #if AMBIENT_POC
     if (k < NTRK) return (uint32_t)trk[k].p[P_LEVEL] |
         ((uint32_t)((ambient_muted >> k) & 1u) << 8) |
-        ((uint32_t)ambient_layers[k].sound << 16) | ((uint32_t)ambient_layers[k].timbre << 24);
+        ((uint32_t)ambient_layers[k].role << 16) | ((uint32_t)ambient_layers[k].patch << 24);
 #endif
     return 0;
 }
@@ -512,7 +512,7 @@ EXPORT uint32_t web_ambient_layer_state(uint32_t k)
 #if AMBIENT_POC
     if (k >= NTRK) return 0;
     const ambient_layer_t *s = &ambient_layers[k];
-    return s->sound | ((uint32_t)s->count << 8) | ((uint32_t)s->timbre << 16) | ((uint32_t)s->speed << 24);
+    return s->role | ((uint32_t)s->count << 8) | ((uint32_t)s->patch << 16) | ((uint32_t)s->speed << 24);
 #else
     return 0;
 #endif
@@ -544,7 +544,7 @@ EXPORT uint32_t web_texture_state(void)
 EXPORT uint32_t web_pulse_timbre(void)
 {
 #if AMBIENT_POC
-    return ambient_layers[2].timbre;
+    return ambient_layers[2].patch;
 #else
     return 0;
 #endif

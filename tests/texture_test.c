@@ -126,7 +126,6 @@ int main(void)
     memcpy(params, t->p, sizeof params);
     int16_t mix_tide_before = trk[0].p[P_LEVEL], mix_texture_before = t->p[P_LEVEL];
     btn_down(B_HOME); frame();
-    turn(EN_PRESET, 1); /* MIX must not accidentally replace the sound. */
     turn(EN_K1, -1); turn(EN_K2, 1); turn(EN_K3, -128); turn(EN_K4, -128);
     isolated = 1;
     for (i = 0; i < P_COUNT; i++) if (i != P_LEVEL) isolated &= params[i] == t->p[i];

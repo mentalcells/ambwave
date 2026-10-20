@@ -6,7 +6,7 @@ the same synthesis code. No hardware or personal samples are needed to try it.
 ## First scene
 
 1. In the browser, click **Switch on** to enable audio. Start at a modest volume.
-2. Track 1 starts on **TIDE**, the curated FM pad. PRESETS selects another sound.
+2. Track 1 starts on **TIDE / BODY PAD**. PRESETS selects another Tide sound.
 3. Tap three notes. In HOLD mode they remain sounding; tap each again to release.
 4. Set SPACE to 0 to hear TIDE dry. Its defaults are SHAPE 50, MOTION 25,
    DENSITY 50 and SPACE 50. Explore the first three knobs during a sustained note.
@@ -23,16 +23,47 @@ The starting mixer balance is TIDE 64%, TEXTURE 62%, PULSE 74%, CLOUD 62%.
 These are fader positions, not equal-loudness percentages. The default balance
 was reviewed with a sustained TIDE chord and scattered PULSE notes.
 
-PRESETS selects a sound on the focused track; it does not select a complete
-scene. All eight sounds are available on every track. Changing sound clears
-that track's live held pitches, so retap your chord after a sound change.
+Hold HOME and turn PRESETS to choose TIDE, TEXTURE, CLOUD, PULSE or DRONE for the
+focused track. Release HOME and turn PRESETS to choose a compatible sound:
+TIDE keeps BODY PAD / WARM PAD / SILK PAD, followed by FM SOFT PAD, AN SOFT PAD,
+AN STRINGS, AN PWM STR and CHOIR AAH. PULSE keeps WARM PLUCK / SOFT MALLET /
+BELL PLUCK, followed by GLASS BELL, FM MARIMBA and FM TINE EP.
+TEXTURE offers NOISE and CLOUD offers GRAIN. FM means FM6; AN means ANALOG.
+
+The new factory auditions preserve the original timbres rather than applying
+Body/Warm/Silk or PHASE-pluck overrides. **FACT** on SHAPE/MOTION (and TIDE
+DENSITY) means that control is deliberately unmapped for Phase 1. SPACE starts
+at 50, restoring the factory chorus/delay/reverb sends; 0 removes all three.
+PULSE DENSITY continues to control SCATTER probability without changing FM tone.
+Factory FM patches keep their own modulation and operator envelopes, so a held
+pluck may decay naturally. Original sounds retain their existing macro mappings.
+
+Changing role or sound clears that track's live held pitches and resets its
+macros; speed, pattern, level and mute are retained. Playing mode is retained
+except DRONE, which always uses sustained HOLD.
+Retap your chord after a change. These choices do not select a complete scene.
+
+## Autonomous Drone
+
+Hold HOME and turn PRESETS one step backwards from TIDE to choose DRONE on
+any track. Its single sound is AN SOFT PAD. Press a note or overlapping chord
+(up to four notes), then release all keys. The Drone sustains and evolves
+without PLAY, including while you play another track.
+
+The first press after all keys are released replaces the previous harmony;
+overlapping presses build the new chord. MIDI follows the same rule. SHAPE
+sets brightness, MOTION adds slow independent timbre/breathing/drift, DENSITY
+sets beating, and SPACE controls existing effects. Try MOTION 0, 25 and 100.
+HOME + ARP keeps Drone sustained. HOME + black track keys mute without clearing;
+**FX + OCT− clears the Drone**, allowing normal release tails. STOP leaves it
+running. See [Drone details and five-minute auditions](DRONE_ROLE_RESULTS.md).
 
 ## Browser knobs and keys
 
 Click a knob and use your computer's up/down arrow keys to turn it one step,
 or drag/scroll over it. There is no separate preset Up button on the FM-1.
-ALGORITHM changes track; PRESETS changes sound. The sound name appears on the
-device screen. T.WARM / T.SILK are compact mixer labels for the TIDE variations.
+ALGORITHM changes track; PRESETS changes sound; HOME + PRESETS changes role.
+The role appears in the track list and the selected sound appears in the footer.
 
 Click the on-screen piano or use the computer keys shown beneath the instrument.
 Shift-click a panel button to keep it held; Shift-click again to release it.

@@ -123,10 +123,10 @@ static int pulse_variation(void)
     for(uint32_t timbre=0;timbre<3;timbre++) {
         double late[2];
         for(uint32_t bright=0;bright<2;bright++) {
-            ambient_audio_reset();ambient_layers[2].timbre=timbre;ambient_pulse_timbre_apply(p);
+            ambient_audio_reset();ambient_layers[2].patch=timbre;ambient_pulse_timbre_apply(p);
             ambient_layers[2].shape=bright?100:0;ambient_shape_turn(p,0);
             ambient_layers[2].motion=0;ambient_motion_apply(p);ambient_layers[2].space=0;ambient_space_apply(p);
-            char path[160];snprintf(path,sizeof path,"build/pulse_demo/%s-shape-%u.wav",pulse_timbre_names[timbre],ambient_layers[2].shape);
+            char path[160];snprintf(path,sizeof path,"build/pulse_demo/%s-shape-%u.wav",ambient_patch_find(AS_PULSE, timbre)->name,ambient_layers[2].shape);
             FILE *wav=fopen(path,"wb");if(wav)wav_hdr(wav,(FS/CTL)*CTL);
             trk_note_on(p,60,100);double energy=0;uint32_t n=0;
             for(uint32_t f=0;f+CTL<=FS;f+=CTL) {
@@ -139,7 +139,7 @@ static int pulse_variation(void)
             }
             if(wav)fclose(wav);late[bright]=sqrt(energy/n);
         }
-        printf("PULSE %s SHAPE: damped tail %.1f ringing tail %.1f\n",pulse_timbre_names[timbre],late[0],late[1]);
+        printf("PULSE %s SHAPE: damped tail %.1f ringing tail %.1f\n",ambient_patch_find(AS_PULSE, timbre)->name,late[0],late[1]);
         bad+=ambient_check("SHAPE clearly changes damped versus ringing envelope",late[1]>late[0]*2&&late[1]>10);
     }
     return bad;
@@ -167,7 +167,7 @@ static int pulse_audio(void)
     int32_t maxpeak = 0; double maxdc = 0, maxlate = 0;
     for (uint32_t variant = 0; variant < 3; variant++) for (c = 0; c < 19; c++) {
         ambient_audio_reset();
-        ambient_layers[2].timbre = variant; ambient_pulse_timbre_apply(&trk[2]);
+        ambient_layers[2].patch = variant; ambient_pulse_timbre_apply(&trk[2]);
         if (c < 16) {
             song.sel=2; ambient_pulse_speed_turn(1); /* fastest clock at every macro corner */
             ambient_layers[2].shape = c & 1 ? 100 : 0; ambient_shape_turn(&trk[2], 0);
@@ -179,7 +179,7 @@ static int pulse_audio(void)
         FILE *wav = 0; char path[120];
         if (c >= 16) {
             const char *names[] = {"pulse-default", "three-layers", "pulse-dense"};
-            snprintf(path, sizeof path, "build/pulse_demo/%s-%s.wav", pulse_timbre_names[variant], names[c-16]);
+            snprintf(path, sizeof path, "build/pulse_demo/%s-%s.wav", ambient_patch_find(AS_PULSE, variant)->name, names[c-16]);
             wav = fopen(path, "wb"); if (wav) wav_hdr(wav, (12u*FS/CTL)*CTL);
             if (c == 18) { ambient_layers[2].density = 100; ambient_density_apply(&trk[2]); }
         }
@@ -290,12 +290,12 @@ int main(void)
     int16_t before_level = p->p[P_LEVEL];
     turn(EN_PRESET,1);pulse_blocks(100);
     bad+=ambient_check("HOME sound selection keeps PULSE macros/mix/mute and clears old input",
-        ui.home&&pulse_active(p)&&ambient_layers[2].timbre==1&&!ambient_layers[2].count&&!p->nheld&&
+        ui.home&&pulse_active(p)&&ambient_layers[2].patch==1&&!ambient_layers[2].count&&!p->nheld&&
         p->p[P_LEVEL]==before_level&&ambient_muted==4&&song.playing&&!memcmp(before_global,song.g,sizeof before_global));
     ambient_tap_key(7);seq_stop();
     bad+=ambient_check("new PULSE input remains queued after STOP",ambient_layers[2].count==1&&!ambient_layers[2].arp_gate);
-    btn_down(B_HOME);frame();uint32_t timbre=ambient_layers[2].timbre;turn(EN_PRESET,1);btn_up(B_HOME);frame();
-    bad+=ambient_check("MIX preset turns do not change sound",ambient_layers[2].timbre==timbre);
+    btn_down(B_HOME);frame();uint32_t timbre=ambient_layers[2].patch;turn(EN_PRESET,1);btn_up(B_HOME);frame();
+    bad+=ambient_check("HOME PRESET selects a role and its default patch",ambient_layers[2].role==AS_DRONE&&ambient_layers[2].patch==0);
     press(B_EDIT);turn(EN_PRESET,1);events_block(CTL);
     bad+=ambient_check("full UI retains the general preset library",!ui.home&&!pulse_active(p)&&!ambient_layers[2].count);
     /* External-clock arp advancement uses supplied clock samples, not wall samples. */

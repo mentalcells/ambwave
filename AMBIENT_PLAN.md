@@ -4,6 +4,44 @@ Renamed from Hasake on 2026-10-16. The user accepted the installed FM TIDE
 as the MVP direction. Current launch work: [public checklist](docs/PUBLIC_RELEASE_CHECKLIST.md).
 Historical milestone notes retain their original terminology.
 
+See the [quick start](docs/QUICK_START.md) for implemented controls and the
+linked result documents below for validation and outstanding decisions.
+
+Track roles and compatible sound patches are now selected independently; see
+[Role/patch separation](docs/ROLE_PATCH_SEPARATION_RESULTS.md) for controls,
+implementation boundaries and validation. Scene persistence remains separate.
+
+The [Phase 1 factory audition](docs/FACTORY_AUDITION_RESULTS.md) adds existing
+Felucca pad/choir and FM bell/mallet/EP choices, preserving factory timbres
+and original sounds. These are listening candidates, not new defaults.
+
+The current code assessment and proposed sound-quality priorities are in
+[Design gap assessment](docs/DESIGN_GAP_ASSESSMENT.md). It distinguishes the
+released FM Tide implementation from earlier analog experiments and proposes
+a focused dry-source listening experiment before further DSP expansion.
+The isolated [P0a breathing experiment](docs/TIDE_P0A_RESULTS.md) is now
+available for matched-level listening. It is opt-in, factory Tide remains
+unchanged, and acceptance must distinguish static fullness from movement.
+Hardware listening found P0a's movement more noticeable but the source still
+insufficiently rich. Breathing tuning is paused; the offline
+[P0b static-voicing comparisons](docs/TIDE_P0B_RESULTS.md) now test harmonic
+balance first, with a secondary quiet-carrier comparison. Factory defaults
+and the installed firmware remain unchanged by these auditions.
+Listening found B brighter and more flute-like while A retained warmth and
+grounding. The [A/D audition](docs/TIDE_D_RESULTS.md) now isolates a quiet
+supporting carrier on A itself. It is listening-only and not a new default.
+
+The autonomous Drone MVP adds a fifth role on the same four tracks, with one
+existing Analog Soft Pad profile, gesture-based chord replacement and slow
+independent evolution. See [Drone results and audition](docs/DRONE_ROLE_RESULTS.md).
+Software validation is separate from pending musical/hardware acceptance.
+
+The isolated Sound Bath reuse experiment on `codex/sound-bath-integration`
+adds TIDE BOWED METAL / BOWL STUDY and reuses existing PULSE GLASS BELL.
+All 16 available dry Sound Bath reference WAVs match byte for byte through
+AmbWave's integrated path. See [reuse audit and validation](docs/SOUND_BATH_INTEGRATION.md).
+Musical acceptance and native timing remain pending; no hardware was installed.
+
 ## Intent
 
 Turn the M-VAVE FM-1 into an immediate ambient instrument built on Felucca.

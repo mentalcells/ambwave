@@ -900,7 +900,7 @@ static uint32_t graph_signature(void)
             h ^= 0xA8B1E17u ^ song.sel * 7777u ^ ambient_mix * 977u ^ song.playing * 13u ^ ambient_muted * 8191u;
             for (i = 0; i < NTRK; i++) {
                 const ambient_layer_t *s = ambient_layer(&trk[i]);
-                h = (h ^ s->sound ^ (s->count << 4) ^ (s->speed << 8) ^ (s->timbre << 12) ^ (s->mode << 16) ^ (s->cloud_length << 20) ^ trk[i].p[P_LEVEL]) * 16777619u;
+                h = (h ^ s->role ^ (s->count << 4) ^ (s->speed << 8) ^ (s->patch << 12) ^ (s->mode << 16) ^ (s->cloud_length << 20) ^ trk[i].p[P_LEVEL]) * 16777619u;
             }
             return h;
         }

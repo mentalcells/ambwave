@@ -8,13 +8,13 @@ int main(void)
     int bad = 0;
     for(uint32_t k=0;k<NTRK;k++) {
         ambient_audio_reset(); track_t *c=&trk[k];
-        ambient_sound_apply(c,AS_CLOUD,0);ambient_mode_set(c,AM_HOLD);mode_blocks(100);
+        ambient_patch_apply(c,AS_CLOUD,0);ambient_mode_set(c,AM_HOLD);mode_blocks(100);
         ambient_latch_toggle(c,60,100);ambient_latch_toggle(c,64,100);ambient_latch_toggle(c,67,100);
         ambient_latch_toggle(c,71,100);
         bad+=ambient_check("CLOUD HOLD accepts three pitches and bounds a fourth",ambient_layer(c)->count==3&&ambient_gated_notes(c)==3);
         ambient_latch_toggle(c,64,100);ambient_latch_toggle(c,71,100);
         bad+=ambient_check("CLOUD HOLD toggles individual pitches and reuses the freed place",ambient_layer(c)->count==3&&ambient_gated_notes(c)==3);
-        ambient_sound_apply(c,AS_TEXTURE,0);mode_blocks(100);ambient_latch_toggle(c,60,100);ambient_latch_toggle(c,64,100);
+        ambient_patch_apply(c,AS_TEXTURE,0);mode_blocks(100);ambient_latch_toggle(c,60,100);ambient_latch_toggle(c,64,100);
         bad+=ambient_check("TEXTURE retains its single held register",ambient_layer(c)->count==1&&ambient_gated_notes(c)==1);
     }
     ambient_audio_reset();song.sel=3;track_t *c=&trk[3];
@@ -27,7 +27,7 @@ int main(void)
     step_t saved[NSTEP];memcpy(saved,c->step,sizeof saved);
     ambient_cloud_length_turn(c);
     bad+=ambient_check("SHORT restores original clocked articulation and preserves the pattern",c->p[P_ATK]==24&&c->p[P_REL]==48&&c->p[P_SGATE]==64&&!memcmp(saved,c->step,sizeof saved));
-    ambient_sound_apply(c,AS_TIDE,0);ambient_sound_apply(c,AS_CLOUD,0);ambient_mode_set(c,AM_SCATTER);
+    ambient_patch_apply(c,AS_TIDE,0);ambient_patch_apply(c,AS_CLOUD,0);ambient_mode_set(c,AM_SCATTER);
     bad+=ambient_check("CLOUD length and explicit scatter speed survive sound changes",ambient_layer(c)->cloud_length==0&&c->p[P_ARATE]==rate);
     ambient_mode_set(c,AM_HOLD);ambient_cloud_length_turn(c);
     bad+=ambient_check("CLOUD HOLD remains sustained when length is pressed",ambient_layer(c)->cloud_length==0&&c->p[P_ATK]==88&&c->p[P_REL]==96);
@@ -71,10 +71,10 @@ int main(void)
     bad+=ambient_check("physical step entry writes a CLOUD phrase without latching preview notes",
         entered&&!ambient_layer(t)->count&&!ambient_gated_notes(t)&&ui.cursor==0);
     step_t pattern[NSTEP];memcpy(pattern,t->step,sizeof pattern);
-    go_home();turn(EN_PRESET,1);mode_blocks(100);
+    go_home();btn_down(B_HOME);frame();turn(EN_PRESET,1);btn_up(B_HOME);frame();mode_blocks(100);
     bad+=ambient_check("sound selection retains SEQUENCE mode and the exact phrase",
         ui.home&&pulse_active(t)&&ambient_layer(t)->mode==AM_SEQUENCE&&t->p[P_AMODE]==0&&!memcmp(pattern,t->step,sizeof pattern));
-    turn(EN_PRESET,-1);mode_blocks(100);seq_start();int plays=1;
+    btn_down(B_HOME);frame();turn(EN_PRESET,-1);btn_up(B_HOME);frame();mode_blocks(100);seq_start();int plays=1;
     uint32_t period=div_samples(t->p[P_SDIV]);
     for(uint32_t i=0;i<8;i++) {
         seq_tick(t,i?period:0);
@@ -89,7 +89,7 @@ int main(void)
     bad+=ambient_check("HOME SELECT advances sequence speed from the actual division",t->p[P_SDIV]==0);
     /* All sound/mode combinations are reachable without replacing a pattern. */
     for(uint32_t k=0;k<NTRK;k++)for(uint32_t sound=AS_TIDE;sound<=AS_CLOUD;sound++)for(uint32_t mode=0;mode<3;mode++) {
-        ambient_mode_set(&trk[k],mode);ambient_sound_apply(&trk[k],sound,0);mode_blocks(100);
+        ambient_mode_set(&trk[k],mode);ambient_patch_apply(&trk[k],sound,0);mode_blocks(100);
         bad+=ambient_check("every track retains its chosen mode across every sound",
             ambient_home_active(&trk[k])&&ambient_layers[k].mode==mode&&trk[k].p[P_AMODE]==(mode==AM_SCATTER?4:0));
     }

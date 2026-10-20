@@ -13,7 +13,7 @@ static int16_t pad_low_audio[8u*FS];
  * tonal movement. Felucca's shared effect return is mono. */
 static pad_macro_measure_t pad_macro_render(uint32_t timbre,uint32_t macro,int high)
 {
-    ambient_audio_reset();track_t *t=&trk[0];ambient_sound_apply(t,AS_TIDE,timbre);pad_blocks(100);
+    ambient_audio_reset();track_t *t=&trk[0];ambient_patch_apply(t,AS_TIDE,timbre);pad_blocks(100);
     void (*turn_macro[])(track_t *,int32_t)={ambient_shape_turn,ambient_motion_turn,ambient_density_turn,ambient_space_turn};
     turn_macro[macro](t,-100);
     ambient_latch_toggle(t,48,100);ambient_latch_toggle(t,55,100);ambient_latch_toggle(t,64,100);
@@ -50,7 +50,7 @@ static int check_macro_response(void)
     int bad=0;
     for(uint32_t timbre=1;timbre<3;timbre++)for(uint32_t macro=0;macro<4;macro++) {
         pad_macro_measure_t low=pad_macro_render(timbre,macro,0),high=pad_macro_render(timbre,macro,1);
-        printf("macro %s %u: colour %.5f/%.5f correlation %.3f movement %.3f/%.3f tail %.2f/%.2f\n",tide_timbre_names[timbre],macro,low.colour,high.colour,high.correlation,low.movement,high.movement,low.tail,high.tail);
+        printf("macro %s %u: colour %.5f/%.5f correlation %.3f movement %.3f/%.3f tail %.2f/%.2f\n",ambient_patch_find(AS_TIDE, timbre)->name,macro,low.colour,high.colour,high.correlation,low.movement,high.movement,low.tail,high.tail);
         int audible=macro==0?high.colour>low.colour*1.5:
             macro==1?high.movement>low.movement+0.2:
             macro==2?fabs(high.correlation)<0.90:high.tail>low.tail+1;
@@ -62,13 +62,13 @@ static int check_macro_response(void)
 static int render_pad(uint32_t timbre, uint32_t wet, const char *directory)
 {
     ambient_audio_reset();track_t *t=&trk[0];
-    ambient_sound_apply(t,AS_TIDE,timbre);pad_blocks(100);
+    ambient_patch_apply(t,AS_TIDE,timbre);pad_blocks(100);
     /* Identical sends isolate the source/envelope comparison from SPACE curves. */
     t->p[P_DLY]=wet?16:0;t->p[P_REV]=wet?42:0;t->p[P_CHOR]=0;
     ambient_latch_toggle(t,48,100);ambient_latch_toggle(t,55,100);ambient_latch_toggle(t,64,100);
     FILE *wav=0;
     if(directory) {
-        char path[512];snprintf(path,sizeof path,"%s/%s_%s.wav",directory,tide_timbre_names[timbre],wet?"space":"dry");
+        char path[512];snprintf(path,sizeof path,"%s/%s_%s.wav",directory,ambient_patch_find(AS_TIDE, timbre)->name,wet?"space":"dry");
         wav=fopen(path,"wb");if(!wav)return 1;wav_hdr(wav,18u*FS);
     }
     double energy=0,sum=0,tail=0;uint32_t count=0,ntail=0;int32_t peak=0;
@@ -84,7 +84,7 @@ static int render_pad(uint32_t timbre, uint32_t wet, const char *directory)
     }
     if(wav)fclose(wav);
     uint32_t active=0;for(uint32_t v=0;v<NVOICE;v++)active+=t->v[v].active;
-    printf("pad %s %s: RMS %.1f peak %d DC %.1f tail %.1f voices %u\n",tide_timbre_names[timbre],wet?"space":"dry",sqrt(energy/count),peak,sum/count,sqrt(tail/ntail),active);
+    printf("pad %s %s: RMS %.1f peak %d DC %.1f tail %.1f voices %u\n",ambient_patch_find(AS_TIDE, timbre)->name,wet?"space":"dry",sqrt(energy/count),peak,sum/count,sqrt(tail/ntail),active);
     return ambient_check("pad chord has body/headroom and decays without hanging voices",sqrt(energy/count)>300&&peak<32767&&fabs(sum/count)<300&&sqrt(tail/ntail)<100&&!active);
 }
 
@@ -93,7 +93,7 @@ int main(int argc,char **argv)
     int bad=check_macro_response();
     for(uint32_t timbre=0;timbre<3;timbre++)for(uint32_t wet=0;wet<2;wet++)bad+=render_pad(timbre,wet,argc>1?argv[1]:0);
     for(uint32_t timbre=1;timbre<3;timbre++)for(uint32_t corner=0;corner<16;corner++) {
-        ambient_audio_reset();track_t *t=&trk[0];ambient_sound_apply(t,AS_TIDE,timbre);pad_blocks(100);
+        ambient_audio_reset();track_t *t=&trk[0];ambient_patch_apply(t,AS_TIDE,timbre);pad_blocks(100);
         ambient_shape_turn(t,corner&1?100:-100);ambient_motion_turn(t,corner&2?100:-100);
         ambient_density_turn(t,corner&4?100:-100);ambient_space_turn(t,corner&8?100:-100);
         ambient_latch_toggle(t,48,100);ambient_latch_toggle(t,55,100);ambient_latch_toggle(t,60,100);ambient_latch_toggle(t,64,100);
@@ -111,14 +111,14 @@ int main(int argc,char **argv)
     /* Real preset wheel: new sounds are available on all tracks and every mode. */
     for(uint32_t k=0;k<NTRK;k++)for(uint32_t mode=0;mode<3;mode++)for(uint32_t timbre=1;timbre<3;timbre++) {
         ambient_audio_reset();song.sel=k;track_t *t=&trk[k];
-        ambient_sound_apply(t,AS_TIDE,0);ambient_mode_set(t,mode);
+        ambient_patch_apply(t,AS_TIDE,0);ambient_mode_set(t,mode);
         t->step[0].n=1;t->step[0].note[0]=67;t->step[0].time=ST_NOTE;t->p[P_LEVEL]=63;
         int16_t globals[G_COUNT];memcpy(globals,song.g,sizeof globals);
-        turn(EN_PRESET,timbre==1?-2:-1);pad_blocks(100);
-        bad+=ambient_check("pad selection preserves HOME, track mode/pattern/level and shared FX",ui.home&&ambient_home_active(t)&&ambient_layer(t)->timbre==timbre&&ambient_layer(t)->mode==mode&&t->step[0].note[0]==67&&t->p[P_LEVEL]==63&&!memcmp(globals,song.g,sizeof globals));
+        turn(EN_PRESET,timbre);pad_blocks(100);
+        bad+=ambient_check("pad selection preserves HOME, track mode/pattern/level and shared FX",ui.home&&ambient_home_active(t)&&ambient_layer(t)->patch==timbre&&ambient_layer(t)->mode==mode&&t->step[0].note[0]==67&&t->p[P_LEVEL]==63&&!memcmp(globals,song.g,sizeof globals));
         ambient_latch_toggle(t,60,100);
         ambient_mode_set(t,(mode+1)%3);pad_blocks(100);
-        bad+=ambient_check("pad mode change releases local input without changing sound identity",ambient_home_active(t)&&ambient_layer(t)->timbre==timbre&&!ambient_layer(t)->count&&!ambient_gated_notes(t));
+        bad+=ambient_check("pad mode change releases local input without changing sound identity",ambient_home_active(t)&&ambient_layer(t)->patch==timbre&&!ambient_layer(t)->count&&!ambient_gated_notes(t));
     }
     return bad?1:0;
 }

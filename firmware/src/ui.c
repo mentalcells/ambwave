@@ -447,6 +447,9 @@ static struct {
     uint8_t keep;                /* the track is as the last load left it (undo.after): a next load keeps the copy */
     uint8_t what;                /* UNDO_SOUND | UNDO_PAT: what the loads since the copy changed (undo_swap) */
     uint8_t eng, preset, user, patn;
+#if AMBIENT_POC
+    ambient_layer_t ambient;
+#endif
     uint8_t fm6_slot;            /* the track's FM6 patch and its SLOT (eng_fm6.c): an edited or a project's */
     uint8_t fm6[FP_SIZE + 1u];   /* patch is the track's own, not a factory one */
     int16_t p[P_COUNT];
@@ -474,6 +477,13 @@ static uint32_t track_sig(const track_t *t)      /* the sound (an FM6 track's pa
 {
     uint8_t id[3] = {t->eng_req, t->preset, t->user};
     uint32_t h = fnv(fnv(steps_sig(t), t->p, sizeof t->p), id, 3), k = trk_index(t);
+#if AMBIENT_POC
+    /* Live holds are performance state, not edits that end a patch browse. */
+    ambient_layer_t config = ambient_layers[k];
+    config.drone_keys = config.drone_midi_out = 0;
+    config.count = config.arp_gate = 0; memset(config.notes, 0, sizeof config.notes);
+    h = fnv(h, &config, sizeof config);
+#endif
     h = fnv(h, fm6_patch[k], sizeof fm6_patch[k]); /* (a patch the editor sent between two loads) */
     for (uint32_t j = 0; j < motion.count; j++)
         if ((motion.event[j].place >> 6) == k) h = fnv(h, &motion.event[j], sizeof motion.event[j]);
@@ -483,17 +493,31 @@ static uint32_t track_sig(const track_t *t)      /* the sound (an FM6 track's pa
 static void load_begin(track_t *t, uint32_t what)
 {
 #if AMBIENT_POC
-    if (what & UNDO_SOUND) ambient_sound_changed(t);
+    ambient_layer_t previous = *ambient_layer(t);
 #endif
     uint32_t i = trk_index(t);
-    if (undo_depth++)
+    if (undo_depth++) {
+#if AMBIENT_POC
+        if (what & UNDO_SOUND) ambient_sound_changed(t);
+#endif
         return;
+    }
     motion_restore(t);
     if (undo.keep && undo.trk == i + 1u && track_sig(t) == undo.after) {
         undo.what |= (uint8_t)what;               /* browsing on: the copy from before the first load stays */
         motion_reset(t);
+#if AMBIENT_POC
+        if (what & UNDO_SOUND) ambient_sound_changed(t);
+#endif
         return;
     }
+#if AMBIENT_POC
+    undo.ambient = previous;
+    undo.ambient.drone_keys = undo.ambient.drone_midi_out = 0;
+    undo.ambient.count = undo.ambient.arp_gate = 0;
+    memset(undo.ambient.notes, 0, sizeof undo.ambient.notes);
+    if (what & UNDO_SOUND) ambient_sound_changed(t);
+#endif
     undo.trk = (uint8_t)(i + 1u);
     undo.what = (uint8_t)what;
     undo.eng = t->eng_req;
@@ -554,6 +578,14 @@ static void undo_swap(void)
     undo.motion_backup = current_motion;
     fm1_irq_off();                                /* the audio ISR must not see half a sound */
     if (undo.what & UNDO_SOUND) {
+#if AMBIENT_POC
+        ambient_latch_clear(t);
+        ambient_layer_t current = *ambient_layer(t);
+        current.drone_keys = current.drone_midi_out = 0;
+        current.count = current.arp_gate = 0; memset(current.notes, 0, sizeof current.notes);
+        *ambient_layer(t) = undo.ambient;
+        undo.ambient = current;
+#endif
         uint8_t e = t->eng_req, pr = t->preset, u = t->user;
         panic_req |= (uint8_t)(1u << trk_index(t));
         t->eng_req = undo.eng;

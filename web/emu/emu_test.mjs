@@ -195,8 +195,23 @@ if (ambient) {
     if (k) slots.turn(EN.ALGO, 1);
     for (let n = 0; n < 8; n++) {
       slots.turn(EN.PRESETS, 1);
-      check(`slot ${k + 1} HOME survives sound selection ${n + 1}`, slots.ex.web_ambient_home_active() === 1);
+      const role = [1, 2, 3, 4][k];
+      check(`slot ${k + 1} patch selection stays within its role ${n + 1}`,
+        slots.ex.web_ambient_home_active() === 1 && (slots.ex.web_ambient_layer_state(k) & 255) === role);
     }
+  }
+  slots.turn(EN.ALGO, -3);
+  for (let k = 0; k < 4; k++) {
+    for (let n = 0; n < 4; n++) {
+      const before = slots.ex.web_ambient_layer_state(k) & 255;
+      slots.ex.web_buttons(1 << B.HOME); slots.render(60); slots.turn(EN.PRESETS, 1);
+      slots.ex.web_buttons(0); slots.render(60);
+      const state = slots.ex.web_ambient_layer_state(k);
+      check(`track ${k + 1} role gesture ${n + 1} selects a new role with its default patch`,
+        (state & 255) !== before && ((state >>> 16) & 255) === 0 && slots.ex.web_ambient_home_active() === 1);
+    }
+    // ALGORITHM detents are relative to the selected track.
+    if (k < 3) slots.turn(EN.ALGO, 1);
   }
   slots.ex.web_keys(1 << 7); slots.render(60); slots.ex.web_keys(0); slots.render(60);
   check("fourth-layer CLOUD key remains latched", ((slots.ex.web_ambient_layer_state(3) >> 8) & 0xff) === 1);
@@ -205,6 +220,28 @@ if (ambient) {
   slots.ex.web_buttons(0); slots.render(60);
   check("fourth HOME black key mutes CLOUD and retains its input", (slots.ex.web_pulse_controls() >> 16) === 8 &&
     ((slots.ex.web_ambient_layer_state(3) >> 8) & 0xff) === 1);
+  // All factory candidates are reachable through real panel turns and produce audio.
+  for (const [role, track, count] of [[1, 0, 10], [3, 2, 6]]) {
+    const audition = await device(null); audition.render(1000); audition.rec = true;
+    if (track) { audition.turn(EN.ALGO, track); audition.tap(B.PLAY); }
+    for (let patch = 1; patch < count; patch++) {
+      audition.turn(EN.PRESETS, 1);
+      if (patch < 3) continue;
+      audition.peak = 0;
+      audition.ex.web_keys((1 << 7) | (1 << 11)); audition.render(60);
+      audition.ex.web_keys(0); audition.render(2000);
+      const state = audition.ex.web_ambient_layer_state(track);
+      check(`factory role ${role} patch ${patch}: panel selection, held pitches and audio`,
+        audition.ex.web_ambient_home_active() === 1 && (state & 255) === role &&
+        ((state >>> 16) & 255) === patch && ((state >>> 8) & 255) === 2 && audition.peak > 0.001);
+    }
+    const reference = process.argv[role === 1 ? 6 : 7];
+    if (reference) {
+      const nat = new Float32Array(new Uint8Array(fs.readFileSync(reference)).buffer), web = audition.samples;
+      check(`all factory role ${role} audition audio matches native bit for bit`,
+        nat.length === web.length && nat.every((sample, i) => sample === web[i]));
+    }
+  }
   const modes = await device(null); modes.render(1000); modes.turn(EN.ALGO,3);
   modes.tap(B.SEQ);
   check("CLOUD SEQ gesture selects sequence mode", modes.ex.web_ambient_mode(3) === 2);
@@ -212,10 +249,12 @@ if (ambient) {
   for (const key of phraseKeys) { modes.ex.web_keys(1 << key); modes.render(60); modes.ex.web_keys(0); modes.render(60); }
   check("CLOUD STEP editor writes all eight physical notes", phraseNotes.every((note,i)=>modes.ex.web_ambient_step_note(3,i)===note));
   const phraseSignature = modes.ex.web_ambient_pattern_signature(3);
-  modes.tap(B.HOME); modes.turn(EN.PRESETS,1);
+  modes.tap(B.HOME); modes.ex.web_buttons(1 << B.HOME); modes.render(60);
+  modes.turn(EN.PRESETS,1); modes.ex.web_buttons(0); modes.render(60);
   check("changing CLOUD to a pluck retains SEQUENCE and its phrase", modes.ex.web_ambient_mode(3) === 2 &&
     modes.ex.web_ambient_pattern_signature(3) === phraseSignature && modes.ex.web_ambient_home_active() === 1);
-  modes.turn(EN.PRESETS,-1); modes.peak=0; modes.tap(B.PLAY); modes.render(2000);
+  modes.ex.web_buttons(1 << B.HOME); modes.render(60); modes.turn(EN.PRESETS,-1);
+  modes.ex.web_buttons(0); modes.render(60); modes.peak=0; modes.tap(B.PLAY); modes.render(2000);
   check("written CLOUD phrase produces audio", modes.peak>0.01);
   modes.tap(B.PLAY);
   modes.ex.web_buttons(1 << B.HOME); modes.render(60);
@@ -233,7 +272,7 @@ if (ambient) {
   if (process.argv[5]) {
     const pads = await device(null);pads.render(1000);pads.rec=true;
     for(let pad=0;pad<2;pad++) {
-      pads.turn(EN.PRESETS,-1);pads.peak=0;
+      pads.turn(EN.PRESETS,pad ? -1 : 2);pads.peak=0;
       pads.ex.web_keys((1<<7)|(1<<11)|(1<<14));pads.render(60);pads.ex.web_keys(0);pads.render(4000);
       check(`warm pad ${2-pad} retains HOME and a sounding three-note chord`,pads.ex.web_ambient_home_active()===1&&((pads.ex.web_ambient_layer_state(0)>>8)&255)===3&&pads.peak>0.01);
       pads.ex.web_keys((1<<7)|(1<<11)|(1<<14));pads.render(60);pads.ex.web_keys(0);pads.render(4000);

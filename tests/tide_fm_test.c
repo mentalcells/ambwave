@@ -11,7 +11,7 @@ int main(int argc,char **argv)
     int candidate=atoi(argv[1]), single=argc>3;
     for(unsigned timbre=0;timbre<3;timbre++) {
         ambient_audio_reset(); track_t *route=&trk[0];
-        ambient_sound_apply(route,AS_TIDE,timbre);
+        ambient_patch_apply(route,AS_TIDE,timbre);
         ambient_space_turn(route,-100); ambient_density_turn(route,100);
         if(route->p[P_CHOR] || route->p[P_DLY] || route->p[P_REV])return 1;
         ambient_space_turn(route,100); ambient_density_turn(route,-100);

@@ -39,7 +39,7 @@ int main(int argc,char **argv)
     if(argc<3)return 2;
     int candidate=atoi(argv[1]), single=argc>3;
     ambient_audio_reset(); track_t *t=&trk[0];
-    if(candidate) {ambient_sound_apply(t,AS_TIDE,2);grounded_patch(t,candidate>1?candidate-1:0);}
+    if(candidate) {ambient_patch_apply(t,AS_TIDE,2);grounded_patch(t,candidate>1?candidate-1:0);}
     ambient_space_turn(t,-100);
     t->p[P_DIST]=t->p[P_CHOR]=t->p[P_DLY]=t->p[P_REV]=0;
     if(single) {

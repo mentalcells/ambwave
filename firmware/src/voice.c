@@ -641,6 +641,9 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         m.shape = (64 << 8) + ((lfo * p[P_LD_SHP]) >> 7) + ((m.envq15 * p[P_ED_SHP]) >> 7);
         if (mod.on)                                     /* the modulation matrix (mod.c) */
             mod_voice(t, v, &m, v->fine + tune_fine + bend_fine);
+#if AMBIENT_POC
+        drone_voice(t, v, &m);
+#endif
         e->render(t, v, out, n, &m);
         nr++;
     }

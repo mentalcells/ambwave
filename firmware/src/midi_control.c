@@ -116,6 +116,12 @@ static void midi_play(track_t *t, uint32_t ch, uint32_t note, uint32_t vel)
         n = 1;
         nn[0] = (uint8_t)note;
     }
+#if AMBIENT_POC
+    if (ambient_drone_active(t)) {
+        ambient_drone_begin(t);
+        for (i = 0; i < n; i++) ambient_drone_add(t, nn[i], vel);
+    } else
+#endif
     for (i = 0; i < n; i++)
         if (!midi_note_held(t, nn[i]) && !midi_local_held(t, nn[i]))
             input_on(t, nn[i], vel);

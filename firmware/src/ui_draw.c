@@ -569,11 +569,17 @@ static void draw_foot(void)
     if (ui.home && ambient_home_active(t)) {
         khint_t kh[3] = {{KC_FX, "+"}, {KC_OCTDN, "CLEAR"}, {KC_EDIT, "FULL UI"}};
         cv_key_row(8, 232, 2, kh, 3, 7u, T_BG);
-        const char *hint = ambient_mix && ambient_layer(t)->mode != AM_HOLD ? "SELECT: SPEED" : "HOME+ARP: MODE";
+        const char *hint = ambient_mix && ambient_layer(t)->mode != AM_HOLD ? "SELECT: SPEED" : "HOME+PRE: ROLE";
         int cloud_clock = cloud_active(t) && ambient_layer(t)->mode != AM_HOLD;
         if (ambient_mix && cloud_clock) hint = "ENV:LENGTH SEL:SPEED";
+        char patch_label[24];
+        str_cpy(patch_label, ambient_patch_name(), sizeof patch_label);
+        if (cloud_clock) {
+            str_cpy(patch_label + str_len(patch_label), " ", 2);
+            str_cpy(patch_label + str_len(patch_label), ambient_cloud_length_name(t), 8);
+        }
         cv_text(8, 19, &AF_S, hint, T_THEME);
-        cv_text_r(232, 19, &AF_S, cloud_clock ? ambient_cloud_length_name(t) : ambient_scene_name(), T_MID, T_BG);
+        cv_text_r(232, 19, &AF_S, patch_label, T_MID, T_BG);
         cv_blit(0, Y_FOOT);
         return;
     }
@@ -684,7 +690,9 @@ static void draw_columns(void)
             }
             if (ambient_home_active(TSEL)) {
                 static const char *const macro[] = {"SHAPE", "MOTION", "DENSITY", "SPACE"};
-                if (c == 0u) {
+                if (ambient_macro_locked(TSEL, c)) {
+                    draw_column(c, macro[c], "FACT", "", T_MID, 0, ICON_NONE);
+                } else if (c == 0u) {
                     int32_t amount = ambient_shape_amount(TSEL);
                     fmt_int(val, amount);
                     card_mot_of(&TSEL->p[P_E4]);

@@ -348,6 +348,10 @@ static void mix_part(track_t *t, uint32_t n)
 {
     int32_t *b = part_buf;
     uint32_t i;
+#if AMBIENT_POC
+    drone_tick(t, n);
+    ambient_bath_tick(t);
+#endif
     mod_begin(t);                                       /* the matrix's per-block values into t->p (mod.c) */
     if (track_render(t, b, n))
         t->tail = 16;                                   /* blocks of DIST state to run out after the last voice */

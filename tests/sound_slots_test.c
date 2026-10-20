@@ -18,8 +18,11 @@ static int check_switches(void)
     for (k = 0; k < NTRK; k++) for (choice = 0; choice < 8; choice++) {
         ambient_audio_reset(); usb.config = 1; mo_r = mo_w = 0;
         song.sel = k;
-        ambient_sound_apply(&trk[k], AS_TIDE, 0); slots_blocks(100);
-        for (i = 0; i < choice; i++) { turn(EN_PRESET, 1); slots_blocks(100); }
+        uint8_t before_role = timbres[choice] ? sounds[choice] :
+            sounds[choice] == AS_TEXTURE ? AS_TIDE : sounds[choice] == AS_CLOUD ? AS_TEXTURE :
+            sounds[choice] == AS_PULSE ? AS_CLOUD : AS_DRONE;
+        ambient_patch_apply(&trk[k], before_role, timbres[choice] ? timbres[choice] - 1 : 0);
+        slots_blocks(100);
         /* Exercise the actual key/MIDI path before each sound change. */
         ambient_tap_key(7); slots_blocks(10);
         uint32_t ons = 0, offs = 0;
@@ -31,14 +34,17 @@ static int check_switches(void)
         ambient_layer_t neighbors[NTRK]; memcpy(neighbors, ambient_layers, sizeof neighbors);
         int16_t params[NTRK][P_COUNT];
         for (i = 0; i < NTRK; i++) memcpy(params[i], trk[i].p, sizeof params[i]);
-        turn(EN_PRESET, 1); slots_blocks(100);
+        if (!timbres[choice]) { btn_down(B_HOME); frame(); }
+        turn(EN_PRESET, 1);
+        if (!timbres[choice]) { btn_up(B_HOME); frame(); }
+        slots_blocks(100);
         while (mo_r != mo_w) { uint32_t e = midi_out_q[mo_r++ % MQ]; offs += ((e >> 8) & 0xf0) == 0x80; }
         int independent = !memcmp(global, song.g, sizeof global);
         for (i = 0; i < NTRK; i++) if (i != k)
             independent &= !memcmp(&neighbors[i], &ambient_layers[i], sizeof neighbors[i]) &&
                 !memcmp(params[i], trk[i].p, sizeof params[i]);
         bad += ambient_check("every slot selects every sound without losing HOME/mix/mute/steps",
-            ui.home && ambient_home_active(&trk[k]) && ambient_layers[k].sound == sounds[choice] && ambient_layers[k].timbre == timbres[choice] &&
+            ui.home && ambient_home_active(&trk[k]) && ambient_layers[k].role == sounds[choice] && ambient_layers[k].patch == timbres[choice] &&
             !ambient_layers[k].count && !trk[k].nheld && !ambient_gated_notes(&trk[k]) &&
             trk[k].p[P_LEVEL] == 47 && (ambient_muted & (1u << k)) && trk[k].step[0].note[0] == 67);
         bad += ambient_check("sound change balances physical MIDI and preserves other tracks/FX",
@@ -52,13 +58,33 @@ static int check_switches(void)
         independent &= !memcmp(global, song.g, sizeof global);
         bad += ambient_check("macros on moved sounds are independent and leave shared FX fixed", independent);
     }
+    /* Invalid pairs and one-patch roles leave live audio and input untouched. */
+    ambient_audio_reset(); song.sel = 1; ambient_tap_key(7); slots_blocks(100);
+    ambient_layer_t before = ambient_layers[1];
+    int16_t params_before[P_COUNT]; memcpy(params_before, trk[1].p, sizeof params_before);
+    ambient_patch_apply(&trk[1], AS_TEXTURE, 1);
+    ambient_patch_apply(&trk[1], 255, 0);
+    turn(EN_PRESET, 10000);
+    bad += ambient_check("unsupported patches and single-patch browsing preserve live state",
+        !memcmp(&before, &ambient_layers[1], sizeof before) &&
+        !memcmp(params_before, trk[1].p, sizeof params_before) && gate_note(&trk[1], 60));
+    ambient_audio_reset(); song.sel = 0;
+    turn(EN_PRESET, 2); slots_blocks(100);
+    bad += ambient_check("original Tide patches keep their IDs", ambient_layers[0].role == AS_TIDE && ambient_layers[0].patch == 2);
+    undo_swap(); slots_blocks(100);
+    bad += ambient_check("undo restores curated role patch and macro defaults",
+        ambient_home_active(&trk[0]) && ambient_layers[0].role == AS_TIDE && ambient_layers[0].patch == 0 && ambient_layers[0].shape == 50);
+    undo_swap(); slots_blocks(100);
+    bad += ambient_check("redo restores the selected patch", ambient_home_active(&trk[0]) && ambient_layers[0].patch == 2);
+    btn_down(B_HOME); frame(); turn(EN_PRESET, -1); btn_up(B_HOME); frame(); slots_blocks(100);
+    bad += ambient_check("role wheel wraps independently and selects the default patch", ambient_layers[0].role == AS_DRONE && !ambient_layers[0].patch);
     return bad;
 }
 static int check_duplicate_sounds(void)
 {
     int bad = 0;
     ambient_audio_reset();
-    for (uint32_t k = 0; k < NTRK; k++) { ambient_sound_apply(&trk[k], AS_PULSE, k % 3); ambient_mode_set(&trk[k], AM_SCATTER); }
+    for (uint32_t k = 0; k < NTRK; k++) { ambient_patch_apply(&trk[k], AS_PULSE, k % 3); ambient_mode_set(&trk[k], AM_SCATTER); }
     slots_blocks(100);
     for (uint32_t k = 0; k < NTRK; k++) ambient_latch_toggle(&trk[k], k ? 60 + k : 0, 100);
     seq_start(); slots_blocks(20);
@@ -71,7 +97,7 @@ static int check_duplicate_sounds(void)
     bad += ambient_check("clearing one PULSE slot preserves the other three inputs",
         !ambient_layers[0].count && ambient_layers[1].count && ambient_layers[2].count && ambient_layers[3].count);
     ambient_audio_reset();
-    for (uint32_t k = 0; k < NTRK; k++) ambient_sound_apply(&trk[k], AS_CLOUD, 0);
+    for (uint32_t k = 0; k < NTRK; k++) ambient_patch_apply(&trk[k], AS_CLOUD, 0);
     slots_blocks(100);
     for (uint32_t k = 0; k < NTRK; k++) ambient_latch_toggle(&trk[k], 60 + k, 100);
     ambient_latch_clear(&trk[1]);
@@ -85,7 +111,7 @@ static int check_four_layer_audio(void)
     double worst = 0;
     for (uint32_t timbre = 0; timbre < 3; timbre++) for (uint32_t corner = 0; corner < 16; corner++) {
         ambient_audio_reset();
-        ambient_sound_apply(&trk[0], AS_TIDE, timbre); slots_blocks(100);
+        ambient_patch_apply(&trk[0], AS_TIDE, timbre); slots_blocks(100);
         for (uint32_t k = 0; k < NTRK; k++) {
             ambient_shape_turn(&trk[k], corner & 1 ? 100 : -100);
             ambient_motion_turn(&trk[k], corner & 2 ? 100 : -100);

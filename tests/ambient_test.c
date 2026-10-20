@@ -143,7 +143,7 @@ int AMBIENT_REFERENCE_MAIN(void)
                          song.g[G_CRATE] == 32 && song.g[G_CDEPTH] == 52);
 
     bad += ambient_check("HOME identifies the named TIDE scene and empty four-note latch",
-                         ui.home && ambient_home_active(t) && str_eq(ambient_scene_name(), "TIDE") &&
+                         ui.home && ambient_home_active(t) && str_eq(ambient_patch_name(), "BODY PAD") &&
                          ambient_latch_count() == 0u);
     {
         int16_t before[P_COUNT];

@@ -180,6 +180,12 @@ if [ -f build/gen/felucca_tables.h ]; then
     run "AmbWave CLOUD: selection, holds, shared FX and layered macro corners" "$OUT/granular_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/sound_slots_test" tests/sound_slots_test.c -lm
     run "AmbWave sound slots: all sounds on all tracks, MIDI ownership, four-layer voice/CPU pressure" "$OUT/sound_slots_test"
+    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drone_test" tests/drone_test.c -lm
+    run "AmbWave Drone: latching, chord replacement, MIDI ownership, five-minute evolution and four-track pressure" "$OUT/drone_test"
+    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/sound_bath_integration_test" tests/sound_bath_integration_test.c -lm
+    run "AmbWave Sound Bath: source records, macro transitions, latch, release and scene pressure" "$OUT/sound_bath_integration_test"
+    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/factory_audition_test" tests/factory_audition_test.c -lm
+    run "AmbWave factory auditions: exact preset defaults, engine isolation, playback, undo and four-track cost" "$OUT/factory_audition_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/playing_modes_test" tests/playing_modes_test.c -lm
     run "AmbWave playing modes: CLOUD phrase entry/playback, independent modes, scatter and voice pressure" "$OUT/playing_modes_test"
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/warm_pad_test" tests/warm_pad_test.c -lm
@@ -189,6 +195,8 @@ if [ -f build/gen/felucca_tables.h ]; then
     mkdir -p build/tide_fm_demo
     run "Tide dry source: spatial bypass, sustained source and release" "$OUT/tide_dry_test" 0 build/tide_fm_demo/default.wav
     run "Tide maximum harmonic weight releases cleanly" "$OUT/tide_dry_test" 1 build/tide_fm_demo/dense.wav
+    $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/tide_breath_test" tests/tide_breath_test.c -lm
+    run "Tide opt-in breathing: pitch, macro integrity, phase independence, bypass and voice limits" "$OUT/tide_breath_test"
     mkdir -p build/pulse_demo
     $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/pulse_test" tests/pulse_test.c -lm
     run "AmbWave PULSE: ownership, transport, independent speed/density, per-hit variation, HOME mutes and renders" "$OUT/pulse_test"

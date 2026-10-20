@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     /* All Tide variants: either macro order must keep SPACE=0 fully dry,
      * then restore the existing chorus mapping when SPACE is raised. */
     if (argc < 3) for (unsigned timbre = 0; timbre < 3; timbre++) {
-        ambient_audio_reset(); track_t *t = &trk[0]; ambient_sound_apply(t, AS_TIDE, timbre);
+        ambient_audio_reset(); track_t *t = &trk[0]; ambient_patch_apply(t, AS_TIDE, timbre);
         ambient_space_turn(t, -100); ambient_density_turn(t, 100);
         bad += ambient_check("SPACE=0 disables every Tide spatial send after DENSITY edits",
                              !t->p[P_CHOR] && !t->p[P_DLY] && !t->p[P_REV]);
