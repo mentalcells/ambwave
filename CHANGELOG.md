@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Recognize the UC25HQ80 flash chip in newer FM-1 units, enabling persistent
+  saves and normal update entry. Ports Felucca fix `7435517`; AmbWave hardware
+  verification on the newer chip remains pending.
 - Independent role and compatible sound selection on all four tracks.
 - Autonomous DRONE role using the existing analog soft pad, chord replacement,
   slow evolution and sustained playback independent of PLAY/STOP.

@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Firmware save flows against NOR flash: deferred settings, retries, and failed-save rollback. */
+#include <stdint.h>
+static uint8_t nor[0x100000];
+#define SMP_USER_XIP(k) (nor + SMP_USER_BASE + (k) * SMP_USER_SIZE)
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
@@ -26,7 +29,7 @@ static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint1
 #include "../firmware/src/menu_items.c"
 static void panel_setup(void) {}
 
-static uint8_t nor[0x100000], flash_ok = 1;
+static uint8_t flash_ok = 1;
 static int erase_error, fail_after = -1;
 static uint32_t erases;
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
@@ -48,7 +51,8 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)
 }
 static uint32_t irq_save(void) { return 0; }
 static void irq_restore(uint32_t f) { (void)f; }
-static uint32_t fl_jedec_ram(void) { return 0; }
+static uint32_t host_flash_id = 0x856014u;
+static uint32_t fl_jedec_ram(void) { return host_flash_id; }
 static void fl_plain_window_init(void) {}
 #define FL_FAR(fn) (fn)
 #include "../firmware/src/storage.c"
@@ -95,6 +99,52 @@ static void reset(void)
     fail_after = -1;
     up_gen = erases = 0;
     irq_start_race = irq_races = 0;
+}
+
+/* Exercise the real boot/save/load path with both known chips and an unknown chip.
+ * NOR contents survive the simulated power cycle; settings and project RAM do not. */
+static int flash_boot_test(void)
+{
+    static const uint32_t ids[] = {0x856014u, 0xB36014u};
+    int bad = 0;
+    uint32_t i;
+    for (i = 0; i < sizeof ids / sizeof ids[0]; i++) {
+        project_store_t saved;
+        uint32_t before;
+        reset();
+        host_flash_id = ids[i];
+        flash_ok = 0;
+        persist_boot();
+        bad += check(i ? "UC25HQ80 boot enables flash (and the update-entry gate)" :
+                         "Puya boot enables flash (and the update-entry gate)", flash_ok);
+        settings_init();
+        settings.palette = 3;
+        settings_save();
+        trk[0].p[P_LEVEL] = 73;
+        project_save(0);
+        saved = proj_slot[0];
+        before = erases;
+        memset(&settings, 0, sizeof settings);
+        memset(&persist_saved, 0, sizeof persist_saved);
+        memset(proj_slot, 0, sizeof proj_slot);
+        flash_ok = 0;
+        persist_boot();
+        bad += check(i ? "UC25HQ80 settings and project survive loss of RAM" :
+                         "Puya settings and project survive loss of RAM",
+                     flash_ok && settings.palette == 3 && project_used(0) &&
+                     !memcmp(&saved, &proj_slot[0], sizeof saved) && erases == before);
+    }
+    reset();
+    host_flash_id = 0x123456u;
+    persist_boot();
+    bad += check("unknown flash stays RAM-only and leaves NOR untouched", !flash_ok && !erases);
+    settings_init();
+    settings.palette = 3;
+    settings_save();
+    project_save(0);
+    bad += check("unknown flash cannot persist settings or projects", !flash_ok && !erases);
+    host_flash_id = 0x856014u;
+    return bad;
 }
 
 /* ---- 1.0.3: the retired FM6 bank's patches move into the user presets on the first boot (up_fm6.c) ---- */
@@ -495,6 +545,7 @@ int main(void)
     settings_save();
     bad += check("PLAY consumed before the settings snapshot defers the write",
                   irq_races == 3u && song.playing && !transport_req && persist_pending && erases == before);
+    bad += flash_boot_test();
     bad += mig_test();
     printf("%s\n", bad ? "PERSISTENCE TEST FAILED" : "persistence test passed");
     return bad != 0;
